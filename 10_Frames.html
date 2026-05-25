@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Frames — Chapter 10</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent),var(--accent3));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent);text-shadow:var(--glow)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow),0 0 60px rgba(0,212,255,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent3)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(0,212,255,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(0,255,136,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent3),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent3);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem;filter:drop-shadow(0 0 8px rgba(0,255,136,.4))}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent3);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent3);margin-top:.35rem;flex-shrink:0;box-shadow:0 0 12px rgba(0,255,136,.5);animation:pg 2s ease infinite}
+  .sdot.o{background:var(--accent2);box-shadow:var(--glow2)}.sdot.b{background:var(--accent);box-shadow:var(--glow)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  /* Frame type cards */
+  .frame-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1.25rem;margin-bottom:2rem}
+  .frame-card{border-radius:4px;padding:1.6rem;position:relative;overflow:hidden;transition:transform .3s,border-color .3s}
+  .frame-card:hover{transform:translateY(-4px)}
+  .frame-card.world{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .frame-card.tool{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .frame-card.user{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .frame-card.jog{background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.35)}
+  .frame-card.cell{background:rgba(100,100,100,.06);border:1px solid rgba(100,100,100,.35)}
+  .frame-num{font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:900;margin-bottom:.3rem}
+  .frame-card.world .frame-num{color:var(--accent)}.frame-card.tool .frame-num{color:var(--accent3)}.frame-card.user .frame-num{color:var(--accent2)}.frame-card.jog .frame-num{color:#a78bfa}.frame-card.cell .frame-num{color:var(--dim)}
+  .frame-title{font-family:'Orbitron',sans-serif;font-size:.78rem;font-weight:700;margin-bottom:.5rem}
+  .frame-card.world .frame-title{color:var(--accent)}.frame-card.tool .frame-title{color:var(--accent3)}.frame-card.user .frame-title{color:var(--accent2)}.frame-card.jog .frame-title{color:#a78bfa}.frame-card.cell .frame-title{color:var(--dim)}
+  .frame-badge{font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:.15rem .5rem;border-radius:2px;display:inline-block;margin-bottom:.6rem}
+  .frame-card.world .frame-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+  .frame-card.tool .frame-badge{background:rgba(0,255,136,.12);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}
+  .frame-card.user .frame-badge{background:rgba(255,107,0,.12);color:var(--accent2);border:1px solid rgba(255,107,0,.3)}
+  .frame-card.jog .frame-badge{background:rgba(139,92,246,.12);color:#a78bfa;border:1px solid rgba(139,92,246,.3)}
+  .frame-card.cell .frame-badge{background:rgba(100,100,100,.12);color:var(--dim);border:1px solid rgba(100,100,100,.3)}
+  .frame-body{font-size:.82rem;color:var(--dim);line-height:1.7}
+
+  /* Method cards for tool frame creation */
+  .method-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .method-card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.2rem;transition:border-color .3s,transform .3s;cursor:pointer}
+  .method-card:hover{border-color:var(--accent3);transform:translateY(-2px)}
+  .method-card.active{border-color:var(--accent3);background:rgba(0,255,136,.05)}
+  .method-num{font-family:'Orbitron',sans-serif;font-size:1.4rem;font-weight:900;color:var(--accent3);margin-bottom:.3rem}
+  .method-name{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:#fff;margin-bottom:.4rem}
+  .method-desc{font-size:.78rem;color:var(--dim);line-height:1.6}
+
+  /* Terminal display */
+  .terminal{background:#030a0f;border:1px solid var(--accent3);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .t-header{color:var(--accent3);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(0,255,136,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-label{color:var(--accent)}.t-val{color:#fff}.t-dim{color:var(--dim)}.t-used{color:var(--accent3)}.t-uninit{color:var(--accent2)}
+  .t-row{display:flex;justify-content:space-between;gap:1rem}
+  .t-cursor{animation:blink .8s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent3),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent3);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent3);flex-shrink:0;box-shadow:0 0 12px rgba(0,255,136,.4);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+
+  /* Coordinate display */
+  .coord-demo{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;display:flex;flex-direction:column;align-items:center}
+  .coord-label{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.15em;margin-bottom:.75rem;text-align:center;text-transform:uppercase}
+
+  /* Frame comparison table */
+  .frame-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:1rem}
+  .frame-table th{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:.18em;color:var(--accent3);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+  .frame-table td{padding:.75rem 1rem;border-bottom:1px solid rgba(26,58,92,.4);color:var(--text);vertical-align:top;transition:background .2s}
+  .frame-table tr:hover td{background:rgba(0,255,136,.04)}
+  .frame-table td:first-child{color:#fff;font-weight:600;font-family:'Share Tech Mono',monospace}
+  .frame-table td:nth-child(2){color:var(--accent3)}
+
+  /* Interactive coordinate explorer */
+  .coord-explorer{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem}
+  .slider-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem}
+  .slider-row label{font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--accent3);min-width:1.5rem}
+  .slider-row input[type=range]{flex:1;accent-color:var(--accent3)}
+  .slider-row span{font-family:'Share Tech Mono',monospace;font-size:.72rem;color:#fff;min-width:50px;text-align:right}
+
+  /* File badge */
+  .file-badge{display:inline-block;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--accent);padding:.2rem .6rem;margin:.2rem}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2.5rem}
+  .quiz-q{font-size:1.05rem;color:#fff;margin-bottom:1.4rem;line-height:1.65;font-weight:600}
+  .quiz-opts{display:flex;flex-direction:column;gap:.65rem}
+  .quiz-opt{padding:.88rem 1.2rem;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:.9rem;color:var(--text);transition:all .2s;display:flex;align-items:center;gap:.8rem}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent3);color:#fff;background:rgba(0,255,136,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);background:rgba(0,255,136,.1);color:var(--accent3)}
+  .quiz-opt.wrong{border-color:#ff4444;background:rgba(255,68,68,.1);color:#ff8888}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.73rem;width:1.4rem;height:1.4rem;border-radius:2px;background:rgba(0,255,136,.1);display:flex;align-items:center;justify-content:center;color:var(--accent3);flex-shrink:0;font-weight:700}
+  .quiz-fb{margin-top:1rem;font-family:'Share Tech Mono',monospace;font-size:.83rem;padding:.8rem 1rem;border-radius:3px;display:none;line-height:1.6}
+  .quiz-fb.show{display:block;animation:fi .3s ease}.quiz-fb.good{background:rgba(0,255,136,.1);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}.quiz-fb.bad{background:rgba(255,68,68,.1);color:#ff8888;border:1px solid rgba(255,68,68,.3)}
+  .quiz-nav{margin-top:1.4rem;display:flex;gap:1rem}
+  .qbtn{background:none;border:1px solid var(--border);color:var(--dim);padding:.6rem 1.2rem;border-radius:3px;cursor:pointer;font-family:'Exo 2',sans-serif;font-size:.85rem;transition:all .2s}
+  .qbtn.pri{background:rgba(0,255,136,.1);border-color:var(--accent3);color:var(--accent3)}.qbtn:hover{border-color:var(--accent3);color:var(--text)}.qbtn.pri:hover{background:rgba(0,255,136,.2)}
+  @keyframes fi{from{opacity:0}to{opacity:1}}
+
+  footer{position:relative;z-index:10;padding:3rem 2rem;border-top:1px solid var(--border);text-align:center}
+  .foot-logo{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent3);letter-spacing:.3em;margin-bottom:1rem}
+  footer p{font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);letter-spacing:.1em}
+
+  @media(max-width:600px){nav{padding:.8rem 1rem}.nav-links{display:none}.section{padding:3rem 1rem}.frame-grid{grid-template-columns:1fr 1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+<div id="particles"></div>
+
+<nav>
+  <a href="#hero" class="nav-logo">FANUC // CH.10</a>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#world">World</a></li>
+    <li><a href="#tool">Tool Frame</a></li>
+    <li><a href="#user">User Frame</a></li>
+    <li><a href="#jog">Jog Frame</a></li>
+    <li><a href="#save">Save Data</a></li>
+    <li><a href="#quiz">Review</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool Training Module</div>
+  <h1>Coordinate <span>Frames</span></h1>
+  <p class="hero-sub">Chapter 10 — Tool, User &amp; Jog Frame Setup</p>
+  <div class="hero-cw">
+    <canvas id="heroC" width="240" height="220" style="display:block;filter:drop-shadow(0 0 22px rgba(0,255,136,.45))"></canvas>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO BEGIN</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section reveal" id="overview">
+  <div class="sec-label">10.2 — Frames Overview</div>
+  <h2 class="sec-title">3D Cartesian Coordinate System</h2>
+  <p style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">A Frame is a 3D Cartesian coordinate system — three planes at right angles to each other meeting at an origin. The FANUC robot uses X, Y, Z for location (measured in mm from the origin) and W, P, R for orientation (degrees of rotation about each axis). Every recorded position is stored as X, Y, Z, W, P, R relative to its reference frame.</p>
+
+  <div class="two-col">
+    <div class="reveal">
+      <!-- Interactive coordinate explorer -->
+      <div class="coord-explorer">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);letter-spacing:.15em;margin-bottom:1.2rem">INTERACTIVE POSITION EXPLORER</p>
+        <div class="slider-row"><label>X</label><input type="range" min="-1500" max="1500" value="1000" id="sX" oninput="updateCoord()"><span id="vX">1000 mm</span></div>
+        <div class="slider-row"><label>Y</label><input type="range" min="-1500" max="1500" value="500" id="sY" oninput="updateCoord()"><span id="vY">500 mm</span></div>
+        <div class="slider-row"><label>Z</label><input type="range" min="0" max="2000" value="500" id="sZ" oninput="updateCoord()"><span id="vZ">500 mm</span></div>
+        <div class="slider-row"><label>W</label><input type="range" min="-180" max="180" value="0" id="sW" oninput="updateCoord()"><span id="vW">0°</span></div>
+        <div class="slider-row"><label>P</label><input type="range" min="-180" max="180" value="45" id="sP" oninput="updateCoord()"><span id="vP">45°</span></div>
+        <div class="slider-row"><label>R</label><input type="range" min="-180" max="180" value="0" id="sR" oninput="updateCoord()"><span id="vR">0°</span></div>
+        <div style="margin-top:1rem;padding:.8rem;background:#030a0f;border:1px solid var(--border);border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:.8rem">
+          <span style="color:var(--accent3)" id="coordOut">Position: (1000.0, 500.0, 500.0, 0.0, 45.0, 0.0)</span>
+        </div>
+        <div class="note-box" style="margin-top:1rem;margin-bottom:0"><div class="bi">ℹ️</div><div class="nt">X, Y, Z = distance in mm from frame origin. W, P, R = rotation about X, Y, Z axes in degrees.</div></div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Why Frames Matter</div>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>Reference Point</strong><span>Every recorded position (X, Y, Z, W, P, R) is measured relative to the origin of the active frame. Change the frame, and all positions shift accordingly.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Easy Program Updates</strong><span>If a fixture or tool moves, you update the frame definition — not every individual position in the program. One edit corrects all points.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>Accurate Path Control</strong><span>With a properly defined Tool Frame, Cartesian interpolated motion moves the TCP in a true straight line or arc — not just the robot's faceplate.</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>Flexible Jogging</strong><span>User and Jog frames let you move the robot aligned to a fixture or part, regardless of how it sits in the cell relative to World.</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Five Frame Types -->
+  <div class="sub-title reveal">The Five Frame Types</div>
+  <div class="frame-grid reveal">
+    <div class="frame-card world">
+      <div class="frame-num">01</div>
+      <div class="frame-title">World Frame</div>
+      <div class="frame-badge">DEFAULT / FIXED</div>
+      <div class="frame-body">Fixed origin at J1/J2 centerline intersection. Basis for all taught positions. Cannot be changed by the user.</div>
+    </div>
+    <div class="frame-card tool">
+      <div class="frame-num">02</div>
+      <div class="frame-title">Tool Frame</div>
+      <div class="frame-badge">TCP DEFINITION</div>
+      <div class="frame-body">Defines the Tool Center Point (TCP). Moves the active control point from faceplate to the working tip of the tool.</div>
+    </div>
+    <div class="frame-card user">
+      <div class="frame-num">03</div>
+      <div class="frame-title">User Frame</div>
+      <div class="frame-badge">WORK REFERENCE</div>
+      <div class="frame-body">Reference frame for all recorded program positions. Typically defined on a fixture, table, or pallet surface.</div>
+    </div>
+    <div class="frame-card jog">
+      <div class="frame-num">04</div>
+      <div class="frame-title">Jog Frame</div>
+      <div class="frame-badge">JOG ALIGNMENT</div>
+      <div class="frame-body">Custom frame for jogging the robot aligned to a part. Positional data is NOT dependent on the Jog Frame.</div>
+    </div>
+    <div class="frame-card cell">
+      <div class="frame-num">05</div>
+      <div class="frame-title">Cell Frame</div>
+      <div class="frame-badge">3D GRAPHICS</div>
+      <div class="frame-body">Used in 3D graphics only. Not covered in this module — refer to the 3D graphics documentation.</div>
+    </div>
+  </div>
+</section>
+
+<!-- WORLD FRAME -->
+<section class="section" id="world">
+  <div class="sec-label">10.4 — World Frame</div>
+  <h2 class="sec-title reveal">World Frame</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">WORLD is the default frame describing the location and orientation of the Tool Center Point (TCP). The default TCP is the center of the faceplate. When recording positional data, the robot measures from the WORLD origin to the tooling and stores it as X, Y, Z, W, P, R.</p>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>Fixed Origin</strong><span>Located on the centerline of the J1-axis at the height of the J2-axis centerline. This location never changes.</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>Cannot Be Changed</strong><span>The WORLD Frame is the default frame of the robot and cannot be modified by the user. It is the basis for all taught positions and all taught frames.</span></div></li>
+        <li class="spec-item"><div class="sdot r"></div><div class="spec-text"><strong>Orientation Sensitive</strong><span>The orientation of the WORLD frame can change from improper mastering. Ensure the robot is correctly mastered to maintain a reliable world reference.</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>Linear Motion</strong><span>When jogging in WORLD coordinate mode, the servo motors maintain linear (straight-line) movement with respect to the tool.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="reveal">
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;display:flex;flex-direction:column;align-items:center">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.15em;margin-bottom:1rem;text-align:center;text-transform:uppercase">World Frame Origin Location</p>
+        <canvas id="worldC" width="280" height="220" style="display:block"></canvas>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);margin-top:.75rem;text-align:center;letter-spacing:.08em">ORIGIN AT J1/J2 CENTERLINE INTERSECTION</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOOL FRAME -->
+<section class="section" id="tool">
+  <div class="sec-label">10.5–10.6 — Tool Frame</div>
+  <h2 class="sec-title reveal">Tool Frame (TCP)</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">The Tool Frame moves the active control point from the faceplate to the working tip of the tool (TCP). Once defined, positional data in your programs will be relative to the TCP. Cartesian interpolated motion paths will be based on the TCP, moving it in a true linear or circular path.</p>
+
+  <div class="note-box reveal"><div class="bi">ℹ️</div><div class="nt"><strong>Key facts:</strong> Default Tool Frame location is the faceplate center (all zeros). Tool Frame data is the physical distance from the TCP back to the faceplate. R30iB controllers: up to 29 Tool Frames. R30iB Plus: up to 253 Tool Frames. Default: 10 schedules.</div></div>
+
+  <!-- Method selector -->
+  <div class="sub-title reveal">Six Methods to Define a Tool Frame</div>
+  <div class="method-cards reveal" id="methodCards">
+    <div class="method-card active" onclick="selectMethod(0)">
+      <div class="method-num">3PT</div>
+      <div class="method-name">Three Point</div>
+      <div class="method-desc">Define location only. Touch a common point from 3 different angles.</div>
+    </div>
+    <div class="method-card" onclick="selectMethod(1)">
+      <div class="method-num">4PT</div>
+      <div class="method-name">Four Point</div>
+      <div class="method-desc">Precise location with TCP error feedback for iterative correction.</div>
+    </div>
+    <div class="method-card" onclick="selectMethod(2)">
+      <div class="method-num">6XZ</div>
+      <div class="method-name">Six Point (XZ)</div>
+      <div class="method-desc">Location + orientation. Use when +Z direction is easier to record.</div>
+    </div>
+    <div class="method-card" onclick="selectMethod(3)">
+      <div class="method-num">6XY</div>
+      <div class="method-name">Six Point (XY)</div>
+      <div class="method-desc">Location + orientation. Use when +Y direction is easier to record.</div>
+    </div>
+    <div class="method-card" onclick="selectMethod(4)">
+      <div class="method-num">DIR</div>
+      <div class="method-name">Direct Entry</div>
+      <div class="method-desc">Type in measured X, Y, Z, W, P, R values directly from tool specs.</div>
+    </div>
+  </div>
+
+  <!-- Method detail panel -->
+  <div class="terminal reveal" id="methodDetail">
+    <div class="t-header" id="mTitle">TOOL FRAME — THREE POINT METHOD (PROC. 10-1)</div>
+    <div id="mContent">
+      <div style="color:var(--dim);font-size:.82rem;line-height:1.9" id="mDesc">Use when values cannot be measured directly. Touch a fixed reference point from 3 different approach angles. Large rotations (~90°) give the best results.</div>
+      <div style="margin-top:.8rem">
+        <span style="color:var(--accent3)">Approach point 1:</span> <span style="color:var(--accent2)">UNINIT</span> → Jog tool tip to reference point, Shift + F5 RECORD<br>
+        <span style="color:var(--accent3)">Approach point 2:</span> <span style="color:var(--accent2)">UNINIT</span> → Approach same point from a different angle, Shift + F5 RECORD<br>
+        <span style="color:var(--accent3)">Approach point 3:</span> <span style="color:var(--accent2)">UNINIT</span> → Approach same point from a third angle, Shift + F5 RECORD<br>
+        <span style="color:var(--dim)">After final point → Frame calculated → "New position calculated" displayed</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-top:2rem">
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Procedure 10-x: Navigate to Tool Frames</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press Menu</strong><p>Access the main menu from the teach pendant.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Cursor to SETUP → Frames → Enter</strong><p>Press the right arrow on SETUP and cursor down to Frames.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Verify Tool Frame is selected</strong><p>Check the upper-left corner. If another frame type is shown, press F3 [OTHER] and select Tool Frame.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Select frame number → F2 DETAIL</strong><p>Cursor to the target frame number and press Enter or F2 DETAIL.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Press F2 [METHOD] → select method</strong><p>Choose Three Point, Four Point, Six Point, or Direct Entry.</p></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Record points → proof → test by jogging</strong><p>After "New position calculated" — measure back to faceplate and jog with Tool mode to verify the TCP pivots in place.</p></div></div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Example Frame Data Display</div>
+      <div class="terminal">
+        <div class="t-header">SETUP FRAMES — TOOL FRAME — DIRECT ENTRY 1/7</div>
+        <div class="t-row"><span class="t-label">Frame Number:</span><span class="t-val">3</span></div>
+        <div class="t-row"><span class="t-label">1 Comment:</span><span class="t-val">Eoat1</span></div>
+        <div class="t-row"><span class="t-label">2 X:</span><span class="t-val">0.000</span></div>
+        <div class="t-row"><span class="t-label">3 Y:</span><span class="t-val">0.000</span></div>
+        <div class="t-row"><span class="t-label">4 Z:</span><span class="t-val">270.000</span></div>
+        <div class="t-row"><span class="t-label">5 W:</span><span class="t-val">0.000</span></div>
+        <div class="t-row"><span class="t-label">6 P:</span><span class="t-val">0.000</span></div>
+        <div class="t-row"><span class="t-label">7 R:</span><span class="t-val t-cursor">0.000</span></div>
+        <div class="t-row" style="margin-top:.4rem"><span class="t-dim">Configuration: N D B, 0, 0, 0</span></div>
+        <div class="t-row"><span class="t-dim">Active TOOL $MNUTOOLNUM[1] = 3</span></div>
+      </div>
+
+      <div class="note-box" style="margin-top:1rem"><div class="bi">🔧</div><div class="nt"><strong>Test a Tool Frame:</strong> Hold Shift + press COORD → set Tool line to your frame number → press COORD until TOOL is displayed in the status bar → use rotation keys to jog. A correct TCP will pivot in place without drifting.</div></div>
+
+      <div class="warn-box" style="margin-top:1rem">
+        <div class="bi">⚠️</div>
+        <div class="wt"><strong>WARNING:</strong> When using Tool Frame offsets in programs, the offset direction is relative to the Tool Frame orientation. Always verify orientation before applying offsets — incorrect offsets can injure personnel or damage equipment.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- USER FRAME -->
+<section class="section" id="user">
+  <div class="sec-label">10.7–10.8 — User Frame</div>
+  <h2 class="sec-title reveal">User Frame</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">User Frame is the reference frame for all recorded positional data in a program. User frames are taught by the programmer and can be defined at any location and orientation. Only one can be active at a time. If no User Frame is set, the program uses World Frame's location and orientation.</p>
+
+  <div class="note-box reveal"><div class="bi">ℹ️</div><div class="nt"><strong>Key facts:</strong> Default User Frame location is the World Frame origin. User Frame data is measured back to the robot origin. R30iB: up to 61 User Frames. R30iB Plus: up to 253. Default: 9 schedules.</div></div>
+
+  <div class="sub-title reveal">Three Methods to Define a User Frame</div>
+
+  <div class="two-col reveal">
+    <div>
+      <table class="frame-table">
+        <thead><tr><th>METHOD</th><th>POINTS NEEDED</th><th>BEST FOR</th></tr></thead>
+        <tbody>
+          <tr><td>Three Point</td><td style="color:var(--accent3)">3</td><td>Origin, X direction, Y direction — most common method</td></tr>
+          <tr><td>Four Point</td><td style="color:var(--accent3)">4</td><td>When origin must be a point other than the reference point used for orientation</td></tr>
+          <tr><td>Direct Entry</td><td style="color:var(--accent2)">0 (manual)</td><td>When you know the exact X, Y, Z, W, P, R coordinates of the frame</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sub-title" style="margin-top:2rem">Three Point Method — Key Points</div>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>Orient Origin Point</strong><span>Touch the point you want as the frame's origin. Defines the X, Y, Z location of the frame relative to World.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>X Direction Point</strong><span>Touch a point along the desired +X direction. Establishes the X-axis of the frame.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>Y Direction Point</strong><span>Touch a point in the desired +Y direction. Together with X Direction, fully defines the frame orientation. The X and Y directions establish the orientation of the User Frame.</span></div></li>
+      </ul>
+    </div>
+
+    <div>
+      <div class="sub-title" style="margin-top:0">User Frame vs World Frame</div>
+      <div class="terminal" style="border-color:var(--accent2)">
+        <div class="t-header" style="color:var(--accent2)">SETUP FRAMES — USER FRAME — THREE POINT 4/4</div>
+        <div class="t-row"><span class="t-label">Frame Number:</span><span class="t-val">1</span></div>
+        <div class="t-row"><span class="t-label">X:</span><span class="t-val">875.0</span><span class="t-label">Y:</span><span class="t-val">-446.3</span><span class="t-label">Z:</span><span class="t-val">-14.2</span></div>
+        <div class="t-row"><span class="t-label">W:</span><span class="t-val">0.0</span><span class="t-label">P:</span><span class="t-val">0.0</span><span class="t-label">R:</span><span class="t-val">0.0</span></div>
+        <div class="t-row" style="margin-top:.4rem"><span class="t-label">Comment:</span><span class="t-val">UFrame1</span></div>
+        <div style="margin-top:.6rem">
+          <div><span class="t-label">Orient Origin Point:</span> <span class="t-used">USED</span></div>
+          <div><span class="t-label">X Direction Point:</span> <span class="t-used">USED</span></div>
+          <div><span class="t-label">Y Direction Point:</span> <span class="t-used">USED</span></div>
+        </div>
+        <div style="margin-top:.6rem;color:var(--accent3)">New position calculated</div>
+        <div style="margin-top:.2rem"><span class="t-dim">Active UFRAME $MNUFRAMENUM[1] = 2</span></div>
+      </div>
+
+      <div class="note-box" style="margin-top:1rem"><div class="bi">📋</div><div class="nt"><strong>Four Point Method adds: System Origin.</strong> Use when you need the frame origin at a different location than the orientation reference. The System Origin point is where all positional data will actually be measured from.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- JOG FRAME -->
+<section class="section" id="jog">
+  <div class="sec-label">10.9–10.10 — Jog Frame</div>
+  <h2 class="sec-title reveal">Jog Frame</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">A Jog Frame can be set up at any location with any orientation, giving you a convenient way to jog along a part when it is oriented differently from the World Frame. Positional data is NOT dependent on a Jog Frame — it only affects jogging direction.</p>
+
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot" style="background:#a78bfa;box-shadow:0 0 12px rgba(139,92,246,.5)"></div><div class="spec-text"><strong>Up to 5 Jog Frames</strong><span>One can be active at a time per robot group. Select JGFRM as the coordinate system to activate.</span></div></li>
+        <li class="spec-item"><div class="sdot" style="background:#a78bfa;box-shadow:0 0 12px rgba(139,92,246,.5)"></div><div class="spec-text"><strong>Two Definition Methods</strong><span>Three Point (same as User Frame three-point) or Direct Entry. Must be set up before use.</span></div></li>
+        <li class="spec-item"><div class="sdot r"></div><div class="spec-text"><strong>No Effect on Program Data</strong><span>Unlike Tool and User Frames, the Jog Frame does NOT affect recorded positions. It only changes how the robot moves when you are jogging manually.</span></div></li>
+      </ul>
+
+      <div class="note-box" style="margin-top:1.5rem"><div class="bi">🔧</div><div class="nt"><strong>To activate JGFRM:</strong> Hold Shift + press COORD → set the Jog line to your frame number → press COORD until JGFRM appears in the status bar. The status bar will show SUBSUB LINE 0 T2 ABORTED JGFRM.</div></div>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Jog Frame vs World Frame</div>
+      <canvas id="jogC" width="320" height="220" style="display:block;width:100%;background:var(--panel);border:1px solid var(--border);border-radius:4px"></canvas>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);margin-top:.5rem;text-align:center;letter-spacing:.08em">JOG FRAME ALIGNS TO PART — WORLD FRAME STAYS FIXED</p>
+
+      <div class="terminal" style="border-color:#a78bfa;margin-top:1rem">
+        <div class="t-header" style="color:#a78bfa">JOG FRAME — THREE POINT 4/4</div>
+        <div class="t-row"><span class="t-label">X:</span><span class="t-val">875.0</span><span class="t-label">Y:</span><span class="t-val">-446.3</span><span class="t-label">Z:</span><span class="t-val">123.8</span></div>
+        <div style="margin-top:.4rem">
+          <div><span class="t-label">Orient Origin Point:</span> <span class="t-used">USED</span></div>
+          <div><span class="t-label">X Direction Point:</span> <span class="t-used">USED</span></div>
+          <div><span class="t-label">Y Direction Point:</span> <span class="t-used">USED</span></div>
+        </div>
+        <div style="margin-top:.6rem;color:#a78bfa">New position calculated</div>
+        <div style="margin-top:.2rem"><span class="t-dim">Active JOG FRAME[1] = 1</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SAVE / RESTORE -->
+<section class="section" id="save">
+  <div class="sec-label">10.11 — Frame Data Files</div>
+  <h2 class="sec-title reveal">Saving &amp; Restoring Frame Data</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Frame data is automatically saved to internal controller memory (SRAM). Always back up to the default device as well — this protects against data loss from corruption or accidental changes. Two files store all frame data.</p>
+
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon">💾</div>
+      <div class="card-title">FRAMEVAR.VR</div>
+      <div class="card-body">Stores all Jog Frame data and comments for all frames. Must be loaded to restore Jog Frame configurations and names.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🗄️</div>
+      <div class="card-title">SYSFRAME.SV</div>
+      <div class="card-body">Stores all Tool Frame and User Frame data. Required alongside FRAMEVAR.VR to fully restore all frame information.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📁</div>
+      <div class="card-title">Both Files Required</div>
+      <div class="card-body">To completely recover frame data, you MUST load both FRAMEVAR.VR and SYSFRAME.SV. Loading only one results in incomplete restoration.</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Procedure 10-10: Save Frame Data</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press Menu → File → File</strong><p>Navigate to the file management screen.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Set the default device</strong><p>Ensure the correct storage device is selected (USB, memory card, etc.).</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Display any frame screen</strong><p>Navigate to Tool Frame, User Frame, or Jog Frame setup screen.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Press FCTN → Select SAVE</strong><p>Both FRAMEVAR.VR and SYSFRAME.SV are automatically saved to the default device. Confirmation message will appear.</p></div></div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Procedure 10-11: Restore Frame Data</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press Menu → File → File</strong><p>Navigate to the file management screen.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Set default device → Press F2 DIR → select .VR</strong><p>Filter the directory to show .VR files.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Highlight FRAMEVAR.VR → F3 LOAD → F4 YES</strong><p>Confirm you want to load the file. A confirmation message will appear when complete.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Repeat steps 2–3 for SYSFRAME.SV</strong><p>Filter for .SV files, then load SYSFRAME.SV using the same steps to complete the restoration.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">10.12 — Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <div class="quiz-wrap reveal">
+    <div id="qC"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-logo">FANUC // CHAPTER 10 // FRAMES</div>
+  <p>MATAGHAND0318CE &nbsp;|&nbsp; FANUC America Corporation © Copyright 2020</p>
+  <p style="margin-top:.5rem;font-size:.6rem;opacity:.5">DO NOT DUPLICATE — For Training Use Only</p>
+</footer>
+
+<script>
+// Particles
+(function(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<18;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${-Math.random()*15}s;--drift:${(Math.random()-.5)*120}px;opacity:0`;
+    if(Math.random()>.6)p.style.background='var(--accent2)';
+    if(Math.random()>.8)p.style.background='var(--accent3)';
+    c.appendChild(p);
+  }
+})();
+
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const max=document.documentElement.scrollHeight-innerHeight;
+  document.getElementById('pb').style.width=(scrollY/max*100)+'%';
+});
+
+// Reveal on scroll
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('visible');if(e.target.classList.contains('steps'))animSteps(e.target);}
+  });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+const sr=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)animSteps(e.target);});
+},{threshold:.1});
+document.querySelectorAll('.steps').forEach(el=>sr.observe(el));
+function animSteps(container){
+  container.querySelectorAll('.step').forEach((s,i)=>{
+    setTimeout(()=>s.classList.add('visible'),i*150);
+  });
+}
+
+// Coordinate explorer
+function updateCoord(){
+  const x=document.getElementById('sX').value;
+  const y=document.getElementById('sY').value;
+  const z=document.getElementById('sZ').value;
+  const w=document.getElementById('sW').value;
+  const p=document.getElementById('sP').value;
+  const r=document.getElementById('sR').value;
+  document.getElementById('vX').textContent=x+' mm';
+  document.getElementById('vY').textContent=y+' mm';
+  document.getElementById('vZ').textContent=z+' mm';
+  document.getElementById('vW').textContent=w+'°';
+  document.getElementById('vP').textContent=p+'°';
+  document.getElementById('vR').textContent=r+'°';
+  document.getElementById('coordOut').textContent=`Position: (${x}.0, ${y}.0, ${z}.0, ${w}.0, ${p}.0, ${r}.0)`;
+}
+
+// Method selector
+const methodData=[
+  {title:'TOOL FRAME — THREE POINT METHOD (PROC. 10-1)',desc:'Use when values cannot be measured directly. Touch a fixed reference point from 3 different approach angles. Large rotations (~90°) give the best results.',points:['Approach point 1','Approach point 2','Approach point 3'],extra:'After final point → Frame calculated → "New position calculated" displayed'},
+  {title:'TOOL FRAME — FOUR POINT METHOD (PROC. 10-2)',desc:'Defines the precise location with TCP error feedback. Indicates the approach position with maximum TCP error so you can correct and re-compute iteratively.',points:['Approach point 1','Approach point 2','Approach point 3','Approach point 4'],extra:'Mean Error and Max Error displayed. If max error is too large, move to that point and re-record.'},
+  {title:'TOOL FRAME — SIX POINT (XZ) METHOD (PROC. 10-3)',desc:'Defines location AND orientation using 3 approach points for TCP location plus 3 direction points. Use XZ when it is easier to record a +Z direction point.',points:['Approach point 1','Approach point 2','Approach point 3','Orient Origin Point','X Direction Point','Z Direction Point'],extra:'After recording all 6 points → Frame data is calculated with both location and orientation.'},
+  {title:'TOOL FRAME — SIX POINT (XY) METHOD (PROC. 10-3)',desc:'Identical to Six Point XZ but uses +Y direction instead of +Z. Use XY when it is easier to jog the robot in the +Y direction for the orientation reference.',points:['Approach point 1','Approach point 2','Approach point 3','Orient Origin Point','X Direction Point','Y Direction Point'],extra:'After recording all 6 points → Frame data calculated with full location and orientation data.'},
+  {title:'TOOL FRAME — DIRECT ENTRY METHOD (PROC. 10-4)',desc:'Enter X, Y, Z, W, P, R values directly from the tool manufacturing specifications. The most accurate method when precise measurements are available.',points:[],extra:'Set each value: cursor to field → type number → press ENTER. No approach points needed. Always proof values and test by jogging.'},
+];
+function selectMethod(i){
+  document.querySelectorAll('.method-card').forEach((c,idx)=>c.classList.toggle('active',idx===i));
+  const m=methodData[i];
+  document.getElementById('mTitle').textContent=m.title;
+  let html=`<div style="color:var(--dim);font-size:.82rem;line-height:1.9;margin-bottom:.6rem">${m.desc}</div>`;
+  if(m.points.length>0){
+    m.points.forEach(pt=>{
+      html+=`<div><span style="color:var(--accent3)">${pt}:</span> <span style="color:var(--accent2)">UNINIT</span> → Jog to position, Shift + F5 RECORD</div>`;
+    });
+  }else{
+    html+=`<div style="color:var(--accent)">Menu → SETUP → Frames → [OTHER] Tool Frame → frame number → F2 DETAIL → F2 [METHOD] → Direct Entry</div>`;
+    html+=`<div style="margin-top:.4rem"><span style="color:var(--accent3)">X, Y, Z, W, P, R</span> → cursor to each field → type value → ENTER</div>`;
+  }
+  html+=`<div style="margin-top:.5rem;color:var(--dim);font-size:.8rem">${m.extra}</div>`;
+  document.getElementById('mContent').innerHTML=html;
+}
+
+// Hero canvas — 3D coordinate axes animation
+(function(){
+  const canvas=document.getElementById('heroC');
+  const ctx=canvas.getContext('2d');
+  const W=240,H=220;
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const cx=110,cy=130;
+    const r=t*.012;
+    // Axes
+    const axes=[
+      {dx:Math.cos(r)*80,dy:-Math.sin(r)*40,label:'X',color:'#00d4ff'},
+      {dx:Math.cos(r+2.094)*80,dy:-Math.sin(r+2.094)*40,label:'Y',color:'#ff6b00'},
+      {dx:0,dy:-85,label:'Z',color:'#00ff88'},
+    ];
+    axes.forEach(a=>{
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+a.dx,cy+a.dy);
+      ctx.strokeStyle=a.color;ctx.lineWidth=2;ctx.stroke();
+      // Arrowhead
+      const ang=Math.atan2(a.dy,a.dx);
+      ctx.beginPath();ctx.moveTo(cx+a.dx,cy+a.dy);
+      ctx.lineTo(cx+a.dx-10*Math.cos(ang-0.4),cy+a.dy-10*Math.sin(ang-0.4));
+      ctx.lineTo(cx+a.dx-10*Math.cos(ang+0.4),cy+a.dy-10*Math.sin(ang+0.4));
+      ctx.closePath();ctx.fillStyle=a.color;ctx.fill();
+      // Label
+      ctx.fillStyle=a.color;ctx.font='bold 12px "Orbitron", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(a.label,cx+a.dx*1.18,cy+a.dy*1.18);
+    });
+    // Origin dot
+    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='10px "Share Tech Mono"';ctx.textAlign='left';
+    ctx.fillText('ORIGIN',cx+8,cy+14);
+    // Animated point
+    const px=cx+Math.cos(t*.02)*55+25;
+    const py=cy-Math.sin(t*.018)*45-30;
+    ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fillStyle='#a78bfa';ctx.fill();
+    ctx.strokeStyle='rgba(167,139,250,.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(cx,py);ctx.moveTo(cx,py);ctx.lineTo(cx,cy);ctx.stroke();
+    ctx.setLineDash([]);
+    // Label
+    const xv=Math.round((px-cx)/2);const zv=Math.round((cy-py)/2);
+    ctx.fillStyle='rgba(167,139,250,.9)';ctx.font='9px "Share Tech Mono"';ctx.textAlign='left';
+    ctx.fillText(`P(${xv}, ?, ${zv})`,px+7,py-4);
+    t++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// World frame canvas
+(function(){
+  const canvas=document.getElementById('worldC');
+  const ctx=canvas.getContext('2d');
+  const W=280,H=220;
+  ctx.clearRect(0,0,W,H);
+  // Robot base schematic
+  const bx=90,by=155,bw=100,bh=18;
+  ctx.fillStyle='rgba(0,212,255,.15)';ctx.fillRect(bx,by,bw,bh);
+  ctx.strokeStyle='rgba(0,212,255,.5)';ctx.lineWidth=1.5;ctx.strokeRect(bx,by,bw,bh);
+  ctx.fillStyle='rgba(0,212,255,.6)';ctx.font='9px "Share Tech Mono"';ctx.textAlign='center';
+  ctx.fillText('ROBOT BASE',bx+bw/2,by+12);
+  // J1 axis line (vertical)
+  const j1x=bx+bw/2;
+  ctx.strokeStyle='rgba(0,212,255,.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(j1x,by-10);ctx.lineTo(j1x,by+bh+10);ctx.stroke();
+  ctx.setLineDash([]);
+  // J2 axis line (horizontal)
+  const j2y=90;
+  ctx.strokeStyle='rgba(0,212,255,.3)';ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(j1x-50,j2y);ctx.lineTo(j1x+50,j2y);ctx.stroke();
+  ctx.setLineDash([]);
+  // Origin marker at intersection
+  const ox=j1x,oy=by; // J1 at base
+  ctx.beginPath();ctx.arc(ox,oy,6,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  ctx.strokeStyle='rgba(0,212,255,.6)';ctx.lineWidth=2;ctx.stroke();
+  // Label
+  ctx.fillStyle='rgba(0,212,255,.9)';ctx.font='9px "Share Tech Mono"';ctx.textAlign='left';
+  ctx.fillText('ORIGIN (J1/J2)',ox+10,oy+4);
+  // Axes from origin
+  const axes=[{dx:60,dy:0,label:'+X',c:'#00d4ff'},{dx:0,dy:-70,label:'+Z',c:'#00ff88'}];
+  axes.forEach(a=>{
+    ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox+a.dx,oy+a.dy);
+    ctx.strokeStyle=a.c;ctx.lineWidth=2;ctx.setLineDash([]);ctx.stroke();
+    ctx.fillStyle=a.c;ctx.font='10px "Orbitron"';ctx.textAlign='center';
+    ctx.fillText(a.label,ox+a.dx+a.dx*.15,oy+a.dy+a.dy*.15);
+  });
+  // Note
+  ctx.fillStyle='rgba(74,106,122,.8)';ctx.font='8px "Share Tech Mono"';ctx.textAlign='center';
+  ctx.fillText('CANNOT BE CHANGED BY USER',140,205);
+})();
+
+// Jog frame canvas — animated comparison
+(function(){
+  const canvas=document.getElementById('jogC');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // World axes (left half, fixed)
+    const wx=70,wy=130;
+    drawAxes(ctx,wx,wy,0,'#00d4ff','#ff6b00','WORLD');
+    // Angled part (left)
+    ctx.save();ctx.translate(wx,wy);
+    ctx.fillStyle='rgba(0,212,255,.08)';ctx.strokeStyle='rgba(0,212,255,.3)';ctx.lineWidth=1;
+    ctx.fillRect(10,-60,80,40);ctx.strokeRect(10,-60,80,40);
+    ctx.restore();
+    // Jog axes (right half, rotated with part)
+    const jx=220,jy=130;
+    const angle=Math.sin(t*.015)*.3+0.4;
+    drawAxes(ctx,jx,jy,angle,'#00ff88','#a78bfa','JGFRM');
+    // Angled part (right, matching jog frame)
+    ctx.save();ctx.translate(jx,jy);ctx.rotate(angle);
+    ctx.fillStyle='rgba(0,255,136,.08)';ctx.strokeStyle='rgba(0,255,136,.3)';ctx.lineWidth=1;
+    ctx.fillRect(10,-60,80,40);ctx.strokeRect(10,-60,80,40);
+    ctx.restore();
+    // Labels
+    ctx.fillStyle='rgba(0,212,255,.5)';ctx.font='8px "Share Tech Mono"';ctx.textAlign='center';
+    ctx.fillText('X moves this way →',wx,wy+40);
+    ctx.fillStyle='rgba(0,255,136,.5)';
+    ctx.fillText('X aligned to part',jx,jy+40);
+    t++;
+    requestAnimationFrame(draw);
+  }
+  function drawAxes(ctx,cx,cy,angle,cx1,cy1,label){
+    const axes=[{dx:Math.cos(angle)*55,dy:-Math.sin(angle)*55,c:cx1,l:'+X'},{dx:Math.cos(angle+Math.PI/2)*40,dy:-Math.sin(angle+Math.PI/2)*40,c:cy1,l:'+Y'}];
+    axes.forEach(a=>{
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+a.dx,cy+a.dy);
+      ctx.strokeStyle=a.c;ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=a.c;ctx.font='9px "Share Tech Mono"';ctx.textAlign='center';
+      ctx.fillText(a.l,cx+a.dx*1.2,cy+a.dy*1.2);
+    });
+    ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+    ctx.fillStyle='rgba(200,221,232,.5)';ctx.font='8px "Share Tech Mono"';ctx.textAlign='center';
+    ctx.fillText(label,cx,cy+20);
+  }
+  draw();
+})();
+
+// Quiz
+const Qs=[
+  {q:'Where is the default Tool Center Point (TCP) located?',opts:['Intersection of J1 and J2 axes','Center of the robot faceplate','Tip of the default tool','FANUC robots do not use Tool Center Points'],correct:1,explain:'By default, the Tool Center Point is located at the center of the robot faceplate. You define a Tool Frame to move the TCP from the faceplate to the actual working point of your tool.',wrongExplain:'The TCP defaults to the faceplate center. The J1/J2 intersection is the World Frame origin — a different reference point entirely.'},
+  {q:'What two buttons display the Jog Menu?',opts:['Shift and Display','Menu and any jog key','Shift and COORD','Group and COORD'],correct:2,explain:'Holding Shift and pressing COORD opens the Jog Menu where you can set the active Tool and User Frame numbers and select your jogging coordinate system.',wrongExplain:'Shift + COORD is the combination that opens the Jog Menu for setting frame numbers and coordinate systems.'},
+  {q:'The Six Point method of defining a Tool Frame defines the Location and _______ of a Tool Frame.',opts:['Distance','Orientation','Operation','Offset'],correct:1,explain:'The Six Point method (XZ or XY) defines both the LOCATION and ORIENTATION of the Tool Frame. Three approach points establish the TCP location; the Orient Origin, X Direction, and Z/Y Direction points establish the frame orientation.',wrongExplain:'The Six Point method uniquely provides both location and orientation — this is what distinguishes it from the Three or Four Point methods which define location only.'},
+  {q:'Positional data recorded in a program is dependent on what two frames?',opts:['World and User','Jog and Tool','User and Tool','Tool and World'],correct:2,explain:'All recorded program positions are relative to the active User Frame (which defines the reference origin in the cell) and the active Tool Frame (which defines the TCP). If either changes, all positions shift accordingly.',wrongExplain:'User and Tool frames together define where every program position is measured from. The Jog Frame only affects manual jogging and has no effect on recorded positions.'},
+  {q:'What is the critical difference between the Four Point User Frame method and the Three Point method?',opts:['Four Point defines orientation; Three Point defines location only','Four Point adds a System Origin point allowing the frame origin to be at a different location from the orientation reference','Four Point requires larger rotation angles between points','Four Point only works with Tool Frames, not User Frames'],correct:1,explain:'The Four Point User Frame method adds a System Origin point. This lets you define the frame\'s orientation using three points on the part, while placing the actual origin (where positions are measured from) at a completely different location — useful when you cannot directly touch the desired origin with the tool.',wrongExplain:'The key advantage of Four Point is the System Origin point. It separates the orientation reference (Orient Origin, X Direction, Y Direction) from the actual measurement origin of the frame.'},
+  {q:'Which files must both be loaded to fully restore frame data?',opts:['BACKUP.TP and SYSFRAME.SV','FRAMEVAR.VR and SYSFRAME.SV','SYSFRAME.SV and SYSMAST.SV','FRAMEVAR.VR and FRAMEDATA.TP'],correct:1,explain:'You must load BOTH FRAMEVAR.VR (which stores Jog Frame data and all frame comments) AND SYSFRAME.SV (which stores Tool Frame and User Frame data) to completely recover all frame information.',wrongExplain:'FRAMEVAR.VR and SYSFRAME.SV are the two files that together contain all frame data. Loading only one leaves the restoration incomplete.'},
+  {q:'What happens to recorded program positions if the Jog Frame is changed?',opts:['All positions shift to align with the new Jog Frame','Positions recalculate automatically','Nothing — Jog Frame has no effect on recorded positions','The program must be re-taught from scratch'],correct:2,explain:'Positional data is NOT dependent on the Jog Frame. The Jog Frame only affects how the robot moves when you are jogging manually. Changing the Jog Frame has zero effect on any recorded program positions.',wrongExplain:'Unlike Tool and User Frames, the Jog Frame is purely for manual operation. Recorded positions are only affected by Tool Frame and User Frame changes.'},
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{el.classList.add('locked');if(idx===q.correct)el.classList.add('correct');else if(idx===i&&idx!==q.correct)el.classList.add('wrong');});
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent3);text-shadow:0 0 20px rgba(0,255,136,.4);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 10: Frames.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

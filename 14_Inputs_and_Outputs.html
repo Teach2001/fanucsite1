@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Inputs and Outputs — Chapter 14</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent2),var(--accent));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent2);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent2);text-shadow:var(--glow2)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent2);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow2),0 0 60px rgba(255,107,0,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent2)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(255,107,0,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(0,212,255,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent2);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent2),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent2),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent2);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent2);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow2);animation:pg 2s ease infinite}
+  .sdot.b{background:var(--accent);box-shadow:var(--glow)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}.sdot.p{background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.5)}.sdot.y{background:#facc15;box-shadow:0 0 12px rgba(250,204,21,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .info-box{background:rgba(255,107,0,.05);border:1px solid rgba(255,107,0,.25);border-left:3px solid var(--accent2);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+  .it{font-size:.85rem;color:#ffc080;line-height:1.7}.it strong{color:#ffe0c0}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  .terminal{background:#030a0f;border:1px solid var(--accent2);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .terminal.blue{border-color:var(--accent)}
+  .t-header{color:var(--accent2);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(255,107,0,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-header.blue{color:var(--accent);border-bottom-color:rgba(0,212,255,.2)}
+  .t-lbl{color:var(--accent)}.t-val{color:#fff}.t-ok{color:var(--accent3)}.t-warn{color:var(--accent2)}.t-dim{color:var(--dim)}
+
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent2),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent2);flex-shrink:0;box-shadow:var(--glow2);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+  .step-body .sub-step{margin-top:.4rem;padding:.4rem .7rem;background:rgba(0,212,255,.04);border-left:2px solid rgba(0,212,255,.2);font-size:.79rem;color:var(--dim);line-height:1.6}
+  .step-body .sub-step span{color:var(--accent2)}
+
+  /* I/O type cards */
+  .io-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+  .io-card{border-radius:4px;padding:1.4rem;transition:transform .3s}
+  .io-card:hover{transform:translateY(-3px)}
+  .io-card.dig{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .io-card.grp{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .io-card.ana{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .io-card.uop{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.35)}
+  .io-card.sop{background:rgba(100,100,100,.06);border:1px solid rgba(100,100,100,.35)}
+  .io-card.rob{background:rgba(250,204,21,.06);border:1px solid rgba(250,204,21,.35)}
+  .ic-abbr{font-family:'Orbitron',sans-serif;font-size:1.6rem;font-weight:900;margin-bottom:.3rem}
+  .io-card.dig .ic-abbr{color:var(--accent)}.io-card.grp .ic-abbr{color:var(--accent2)}.io-card.ana .ic-abbr{color:var(--accent3)}.io-card.uop .ic-abbr{color:#a78bfa}.io-card.sop .ic-abbr{color:var(--dim)}.io-card.rob .ic-abbr{color:#facc15}
+  .ic-name{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.08em}
+  .io-card.dig .ic-name{color:var(--accent)}.io-card.grp .ic-name{color:var(--accent2)}.io-card.ana .ic-name{color:var(--accent3)}.io-card.uop .ic-name{color:#a78bfa}.io-card.sop .ic-name{color:var(--dim)}.io-card.rob .ic-name{color:#facc15}
+  .ic-tag{font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:.1rem .35rem;border-radius:2px;display:inline-block;margin-bottom:.5rem;border:1px solid currentColor;opacity:.7}
+  .ic-body{font-size:.8rem;color:var(--dim);line-height:1.7}
+
+  /* Rack table */
+  .rack-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:1rem}
+  .rack-table th{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.15em;color:var(--accent2);text-align:left;padding:.6rem 1rem;border-bottom:1px solid var(--border)}
+  .rack-table td{padding:.6rem 1rem;border-bottom:1px solid rgba(26,58,92,.3);transition:background .2s}
+  .rack-table tr:hover td{background:rgba(0,212,255,.04)}
+  .rack-table td:first-child{color:var(--accent);font-family:'Share Tech Mono',monospace;font-weight:700}
+  .rack-table td:nth-child(2){color:#fff}
+
+  /* I/O config table */
+  .cfg-table{width:100%;border-collapse:collapse;font-size:.8rem;background:#030a0f;border:1px solid var(--border);border-radius:4px;overflow:hidden;font-family:'Share Tech Mono',monospace}
+  .cfg-table th{font-size:.63rem;letter-spacing:.15em;color:var(--accent2);text-align:center;padding:.5rem .8rem;background:rgba(255,107,0,.06);border-bottom:1px solid var(--border)}
+  .cfg-table td{padding:.55rem .8rem;border-bottom:1px solid rgba(26,58,92,.25);text-align:center;color:var(--text)}
+  .cfg-table tr:hover td{background:rgba(0,212,255,.04)}
+  .cfg-table td:first-child{color:var(--dim);text-align:left}
+  .cfg-table td:nth-child(2){color:var(--accent)}
+  .stat-activ{color:var(--accent3);font-weight:700}
+  .stat-unasg{color:var(--dim)}
+  .stat-pend{color:#facc15;font-weight:700}
+
+  /* Binary group visualizer */
+  .binary-demo{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;margin-top:1rem}
+  .bit-row{display:flex;gap:.5rem;justify-content:center;margin-bottom:1rem;flex-wrap:wrap}
+  .bit-box{width:52px;height:52px;border-radius:4px;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.65rem;cursor:pointer;transition:all .3s;user-select:none}
+  .bit-box .bit-label{font-size:.55rem;color:var(--dim);margin-bottom:.2rem;font-family:'Share Tech Mono',monospace}
+  .bit-box .bit-val{font-size:1.1rem;font-weight:700;color:var(--dim);transition:color .2s}
+  .bit-box.on{border-color:var(--accent3);background:rgba(0,255,136,.12)}
+  .bit-box.on .bit-val{color:var(--accent3)}
+  .bit-box .bit-weight{font-size:.55rem;color:var(--dim);margin-top:.15rem}
+  .group-result{text-align:center;font-family:'Orbitron',sans-serif;font-size:1.4rem;color:var(--accent2);margin-top:.5rem}
+  .group-result span{color:#fff}
+  .group-hint{text-align:center;font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);margin-top:.3rem}
+
+  /* SIM status indicator */
+  .sim-badge{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:.7rem;padding:.2rem .5rem;border-radius:3px;font-weight:700}
+  .sim-u{background:rgba(74,106,122,.2);color:var(--dim);border:1px solid var(--dim)}
+  .sim-s{background:rgba(0,255,136,.15);color:var(--accent3);border:1px solid var(--accent3)}
+  .sim-on{background:rgba(0,212,255,.15);color:var(--accent);border:1px solid var(--accent)}
+  .sim-off{background:rgba(255,50,50,.1);color:#ff6b6b;border:1px solid #ff3232}
+
+  /* Program builder */
+  .prog-builder{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .prog-header{background:rgba(255,107,0,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .prog-name-display{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--accent2);letter-spacing:.15em}
+  .prog-body{padding:1rem 1.2rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;min-height:auto}
+  .pl{line-height:2.1;display:flex;gap:.6rem;align-items:center}
+  .pl-num{color:var(--dim);min-width:1.6rem;text-align:right;flex-shrink:0}
+  .pl-kw{color:var(--accent2)}.pl-motion{color:var(--accent)}.pl-pos{color:#a78bfa}.pl-speed{color:var(--accent3)}.pl-term{color:var(--accent2)}.pl-io{color:#facc15}.pl-end{color:var(--dim)}
+
+  /* Lab card */
+  .lab-card{background:var(--panel);border:1px solid rgba(0,255,136,.3);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+  .lab-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent3),transparent)}
+  .lab-num{font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--accent3);letter-spacing:.2em;margin-bottom:.3rem}
+  .lab-title{font-family:'Orbitron',sans-serif;font-size:1rem;color:#fff;margin-bottom:.8rem}
+  .lab-body{font-size:.85rem;color:var(--dim);line-height:1.8}
+  .lab-steps{margin-top:1rem;display:flex;flex-direction:column;gap:.4rem;padding-left:1.2rem}
+  .lab-steps li{font-size:.82rem;color:var(--dim);line-height:1.7}
+  .lab-steps li strong{color:var(--text)}
+  .lab-sub{margin-top:.3rem;padding-left:1.2rem;display:flex;flex-direction:column;gap:.25rem}
+  .lab-sub li{font-size:.8rem;color:var(--dim);line-height:1.6;list-style:lower-alpha}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem;margin-top:1rem}
+  .quiz-q{font-size:.98rem;color:#fff;font-weight:600;line-height:1.6;margin-bottom:1.5rem}
+  .quiz-opts{display:flex;flex-direction:column;gap:.75rem}
+  .quiz-opt{display:flex;align-items:center;gap:.9rem;padding:.9rem 1.1rem;background:#030a0f;border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .2s;font-size:.85rem;color:var(--dim)}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent2);color:#fff;background:rgba(255,107,0,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.06)}
+  .quiz-opt.wrong{border-color:#ff3232;color:#ff8888;background:rgba(255,50,50,.06)}
+  .quiz-opt.locked{cursor:default}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;width:1.6rem;height:1.6rem;border-radius:50%;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .quiz-fb{margin-top:1.2rem;font-size:.85rem;line-height:1.7;border-radius:3px;padding:0;max-height:0;overflow:hidden;transition:all .4s ease;opacity:0}
+  .quiz-fb.show{max-height:220px;padding:.9rem 1.1rem;opacity:1}
+  .quiz-fb.good{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.3);color:var(--accent3)}
+  .quiz-fb.bad{background:rgba(255,50,50,.07);border:1px solid rgba(255,50,50,.3);color:#ff8888}
+  .quiz-nav{margin-top:1.2rem;display:flex;gap:.8rem;justify-content:flex-end}
+  .qbtn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.5rem 1.2rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s}
+  .qbtn:hover,.qbtn.pri{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.08)}
+  .qbtn.pri{box-shadow:var(--glow2)}
+
+  @media(max-width:768px){nav .nav-links{display:none}.io-grid{grid-template-columns:1fr 1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+
+<nav>
+  <a class="nav-logo" href="#">FANUC // CH.14</a>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#types">I/O Types</a></li>
+    <li><a href="#hardware">Hardware</a></li>
+    <li><a href="#config">Configure</a></li>
+    <li><a href="#group">Group I/O</a></li>
+    <li><a href="#control">Control</a></li>
+    <li><a href="#labs">Labs</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-label">HandlingTool — Chapter 14</div>
+  <h1>Inputs &amp;<br><span>Outputs</span></h1>
+  <p class="hero-sub">Signals · Hardware · Configuration · Monitoring · Forcing</p>
+  <div class="hero-cw">
+    <div class="hero-ring ring1"></div>
+    <div class="hero-ring ring2"></div>
+    <div style="position:relative;z-index:2;background:#030a0f;border:1px solid var(--border);border-radius:4px;padding:1.2rem 1.8rem;font-family:'Share Tech Mono',monospace;font-size:.8rem;min-width:260px;text-align:left">
+      <div style="color:var(--dim);font-size:.6rem;letter-spacing:.2em;margin-bottom:.8rem">I/O SIGNAL EXAMPLES</div>
+      <div style="display:flex;flex-direction:column;gap:.35rem">
+        <div><span style="color:var(--accent)">DI[1]</span> <span style="color:var(--dim)">=</span> <span style="color:#fff">DIGITAL INPUT 1</span></div>
+        <div><span style="color:var(--accent2)">DO[3]</span> <span style="color:var(--dim)">=</span> <span style="color:#fff">DIGITAL OUTPUT 3</span></div>
+        <div><span style="color:var(--accent3)">GO[2]</span> <span style="color:var(--dim)">=</span> <span style="color:#fff">GROUP OUTPUT 2</span></div>
+        <div><span style="color:#a78bfa">RO[1]</span> <span style="color:var(--dim)">=</span> <span style="color:#fff">ROBOT OUTPUT 1</span></div>
+        <div style="margin-top:.4rem;border-top:1px solid var(--border);padding-top:.4rem">
+          <span style="color:var(--accent3)">ON</span> <span style="color:var(--dim)">/ </span><span style="color:#ff3232">OFF</span> <span style="color:var(--dim)">— two states, one signal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO EXPLORE</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section" id="overview">
+  <div class="sec-label">14.2 — I/O Overview</div>
+  <h2 class="sec-title reveal">Inputs &amp; Outputs Overview</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">Inputs and outputs (I/O) are electrical signals that enable the controller to communicate with the robot, end-of-arm tooling, and external devices such as PLCs, HMIs, sensors, and actuators. Think of it like how humans <strong style="color:#fff">speak (output)</strong> and <strong style="color:#fff">listen (input)</strong> — but for machines the signals are electrical.</p>
+
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon">📡</div>
+      <div class="card-title">Signals</div>
+      <div class="card-body">The controller core software views all I/O as signals, identified by kind and number — for example DI[1] or GO[2].</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📤</div>
+      <div class="card-title">Outputs</div>
+      <div class="card-body">Can be turned ON or OFF, or set to a value if supported. Outputs are sent <em>from</em> the controller to external devices.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📥</div>
+      <div class="card-title">Inputs</div>
+      <div class="card-body">Can be read and their values stored so the program can make decisions based on the incoming signal state.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🏭</div>
+      <div class="card-title">Applications</div>
+      <div class="card-body">Modern manufacturing uses many I/O communication methods. FANUC offers solutions for every preferred interface or application type.</div>
+    </div>
+  </div>
+</section>
+
+<!-- I/O TYPES -->
+<section class="section" id="types">
+  <div class="sec-label">14.3 — Types of I/O</div>
+  <h2 class="sec-title reveal">Types of I/O</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">The available kinds and quantities of I/O depend on the hardware installed. Six types are available in the FANUC system.</p>
+
+  <div class="io-grid reveal">
+    <div class="io-card dig">
+      <div class="ic-abbr">DI/DO</div>
+      <div class="ic-name">Digital I/O</div>
+      <div class="ic-tag">ON / OFF</div>
+      <div class="ic-body">A single control signal with only two possible states: ON or OFF. Provides access to one input or output signal line. The most common I/O type.</div>
+    </div>
+    <div class="io-card grp">
+      <div class="ic-abbr">GI/GO</div>
+      <div class="ic-name">Group I/O</div>
+      <div class="ic-tag">Binary Integer</div>
+      <div class="ic-body">A sequence of up to 16 digital I/O signals interpreted as a binary integer. Each bit is a single digital line; unused bits are assigned 0.</div>
+    </div>
+    <div class="io-card ana">
+      <div class="ic-abbr">AI/AO</div>
+      <div class="ic-name">Analog I/O</div>
+      <div class="ic-tag">-10V to +10V</div>
+      <div class="ic-body">A voltage signal within the range of the I/O board. Typical range is -10V to 0V or 0V to +10V depending on the hardware device used.</div>
+    </div>
+    <div class="io-card uop">
+      <div class="ic-abbr">UI/UO</div>
+      <div class="ic-name">User Operator Panel</div>
+      <div class="ic-tag">18 In / 20–24 Out</div>
+      <div class="ic-body">Provides 18 inputs and 20–24 outputs connectable to a remote device or panel. Most signals active when robot is in remote condition; safety signals always active.</div>
+    </div>
+    <div class="io-card sop">
+      <div class="ic-abbr">SI/SO</div>
+      <div class="ic-name">Standard Operator Panel</div>
+      <div class="ic-tag">Fixed / Read-Only</div>
+      <div class="ic-body">Internal controller software panel signals. Assignments cannot be changed, but are useful to display during troubleshooting operations.</div>
+    </div>
+    <div class="io-card rob">
+      <div class="ic-abbr">RI/RO</div>
+      <div class="ic-name">Robot I/O</div>
+      <div class="ic-tag">EE Connector</div>
+      <div class="ic-body">Signals between the controller and robot sent to the End Effector (EE) connector. HandlingTool: 8 RI / 8 RO. LR HandlingTool: up to 6 RI / 6 RO.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HARDWARE -->
+<section class="section" id="hardware">
+  <div class="sec-label">14.4 — I/O Hardware</div>
+  <h2 class="sec-title reveal">I/O Hardware</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">The hardware type dictates the kinds of I/O available and the number of ports. Each hardware family has different communication, physical, and capability characteristics.</p>
+
+  <div class="two-col reveal">
+    <div>
+      <ul class="specs-list">
+        <li class="spec-item">
+          <div class="sdot b"></div>
+          <div class="spec-text">
+            <strong>Model A I/O</strong>
+            <span>Discrete I/O modules communicating with the CPU through an interface module. Requires a backplane in the controller. Supports digital (8/16/32 inputs) and analog (2/4 channels) I/O. Some FANUC software automatically configures Model A at cold start ("Plug and Play").</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot"></div>
+          <div class="spec-text">
+            <strong>Model B I/O</strong>
+            <span>Discrete I/O modules that can have both inputs and outputs on the same unit. Digital only — 24V DC or 120V AC. Uses serial communications with CPU via interface module. No backplane required.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot g"></div>
+          <div class="spec-text">
+            <strong>Fieldbus / Network I/O</strong>
+            <span>DeviceNet, ControlNet (legacy), Profibus, Profinet, EtherNet/IP, EtherCat. These require additional software options and possibly extra hardware to configure.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div>
+      <div class="terminal blue">
+        <div class="t-header blue">FIELDBUS RACK ASSIGNMENTS</div>
+        <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+          <tr><td style="color:var(--accent);padding:.25rem .4rem">Model A / B</td><td style="color:#fff;padding:.25rem .4rem">Rack 1+ (sequential)</td></tr>
+          <tr><td style="color:var(--accent);padding:.25rem .4rem">DeviceNet</td><td style="color:#fff;padding:.25rem .4rem">Rack 81–84</td></tr>
+          <tr><td style="color:var(--accent);padding:.25rem .4rem">EtherNet/IP</td><td style="color:#fff;padding:.25rem .4rem">Rack 89</td></tr>
+          <tr><td style="color:var(--accent);padding:.25rem .4rem">Profibus</td><td style="color:#fff;padding:.25rem .4rem">Rack 66/67</td></tr>
+          <tr><td style="color:var(--accent);padding:.25rem .4rem">FL-net</td><td style="color:#fff;padding:.25rem .4rem">Rack 68</td></tr>
+          <tr><td style="color:var(--accent);padding:.25rem .4rem">PMC</td><td style="color:#fff;padding:.25rem .4rem">Rack 33</td></tr>
+          <tr><td style="color:var(--accent);padding:.25rem .4rem">Mate Controller</td><td style="color:#fff;padding:.25rem .4rem">Rack 48</td></tr>
+        </table>
+      </div>
+      <div class="note-box" style="margin-top:1rem">
+        <div class="bi">📌</div>
+        <div class="nt">Fieldbus and network I/O types require additional <strong>software options</strong> and possibly extra hardware before they can be configured.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONFIGURE -->
+<section class="section" id="config">
+  <div class="sec-label">14.5 — Configuring I/O</div>
+  <h2 class="sec-title reveal">Setting Up I/O</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Configuring I/O establishes the correspondence between the signal number and the physical port. Each signal must be assigned a <strong style="color:#fff">Rack</strong>, a <strong style="color:#fff">Slot</strong>, and a <strong style="color:#fff">Starting Point</strong> (digital) or <strong style="color:#fff">Channel</strong> (analog).</p>
+
+  <div class="note-box reveal">
+    <div class="bi">📌</div>
+    <div class="nt"><strong>Power cycle required:</strong> After configuring or changing I/O configuration you must turn the controller OFF and back ON for changes to take effect.</div>
+  </div>
+
+  <!-- Address breakdown -->
+  <div class="card-grid reveal" style="margin-top:2rem">
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent2);font-weight:900">1</div>
+      <div class="card-title">Rack</div>
+      <div class="card-body">Identifies the <em>type</em> of I/O communication. Think of it as the communication medium (like talking vs. email for humans). The physical location where the module or board is mounted.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent2);font-weight:900">2</div>
+      <div class="card-title">Slot</div>
+      <div class="card-body">Identifies the individual module within a rack. Valid values are 1–10, assigned sequentially. The first process I/O board is always slot 1. No duplicate slot numbers within the same rack.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent2);font-weight:900">3</div>
+      <div class="card-title">Start Point / Channel</div>
+      <div class="card-body">The physical position on the module identifying the first port in the range. Called "Start Point" for digital I/O and "Channel" for analog I/O.</div>
+    </div>
+  </div>
+
+  <!-- Config procedure -->
+  <div class="two-col reveal" style="margin-top:2rem">
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 14-1: Configure Digital I/O</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press MENU → Highlight I/O → Digital → ENTER</strong><p>Navigate via the flyout menu to the I/O Digital screen.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F2 CONFIG</strong><p>Switches from the monitor view to the configuration table showing RANGE / RACK / SLOT / START / STAT columns.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Toggle Inputs/Outputs with F3 IN/OUT</strong><p>Switch between the DI and DO configuration screens as needed.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Set RACK, SLOT, START values</strong><p>Cursor to each field, type the value, press ENTER. To delete an assignment set all three to 0 or press F4 DELETE.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Verify — valid shows PEND, then cycle power</strong><p>A valid assignment shows PEND (pending). Cycle controller power to make the change active.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Configuration Table Example</div>
+      <table class="cfg-table">
+        <thead><tr><th>#</th><th>RANGE</th><th>RACK</th><th>SLOT</th><th>START</th><th>STAT</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td style="color:var(--accent)">DO[1–8]</td><td>0</td><td>1</td><td>21</td><td><span class="stat-pend">PEND</span></td></tr>
+          <tr><td>2</td><td style="color:var(--accent)">DO[9–16]</td><td>0</td><td>1</td><td>29</td><td><span class="stat-activ">ACTIV</span></td></tr>
+          <tr><td>3</td><td style="color:var(--accent)">DO[17–20]</td><td>0</td><td>1</td><td>37</td><td><span class="stat-activ">ACTIV</span></td></tr>
+          <tr><td>4</td><td style="color:var(--dim)">DO[21–24]</td><td>0</td><td>0</td><td>0</td><td><span class="stat-unasg">UNASG</span></td></tr>
+          <tr><td>5</td><td style="color:var(--accent)">DO[25–64]</td><td>0</td><td>2</td><td>1</td><td><span class="stat-activ">ACTIV</span></td></tr>
+          <tr><td>6</td><td style="color:var(--accent)">DO[65–104]</td><td>0</td><td>3</td><td>1</td><td><span class="stat-activ">ACTIV</span></td></tr>
+          <tr><td>7</td><td style="color:var(--dim)">DO[145–512]</td><td>0</td><td>0</td><td>0</td><td><span class="stat-unasg">UNASG</span></td></tr>
+        </tbody>
+      </table>
+      <div class="info-box" style="margin-top:1rem">
+        <div class="bi">💡</div>
+        <div class="it"><strong>PEND</strong> = valid assignment awaiting power cycle. <strong>ACTIV</strong> = live and active. <strong>UNASG</strong> = unassigned range.</div>
+      </div>
+
+      <div class="sub-title">Procedure 14-2: Comment / Polarity / Complementary</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Navigate to I/O → Digital, cursor to signal</strong></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press NEXT → F4 DETAIL</strong><p>Opens the Port Detail screen with Comment, Polarity, and Complementary fields.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Comment: cursor to comment line → ENTER → type name</strong></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Polarity: F4 INVERSE / F5 NORMAL</strong>
+          <div class="sub-step">Default is <span>NORMAL</span>. Cycle power for change to take effect.</div>
+        </div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Complementary: F4 TRUE / F5 FALSE</strong>
+          <div class="sub-step">Odd output complimented with corresponding even output only. Cycle power required.</div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GROUP I/O -->
+<section class="section" id="group">
+  <div class="sec-label">14.6 — Group I/O</div>
+  <h2 class="sec-title reveal">Group I/O</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:1.5rem">Group I/O allows "grouping" of Digital Inputs or Outputs so the robot understands them as a single integer (number) based on binary bit values: 1, 2, 4, 8, 16, 32, 64, 128... This enables program selection from a PLC, or turning on/off any combination of outputs with one instruction.</p>
+
+  <!-- Interactive Binary Demo -->
+  <div class="reveal">
+    <div class="sub-title" style="margin-top:0">Interactive Binary Group Visualizer</div>
+    <div class="binary-demo">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);letter-spacing:.15em;text-align:center;margin-bottom:1rem">CLICK BITS TO TOGGLE — OBSERVE GROUP VALUE</div>
+      <div class="bit-row" id="bitRow">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="group-result">GO[1] = <span id="groupVal">0</span></div>
+      <div class="group-hint" id="groupHint">All bits OFF → value = 0</div>
+      <div style="display:flex;justify-content:center;gap:.8rem;margin-top:1rem">
+        <button onclick="setGroupVal(17)" style="font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:.3rem .8rem;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);border-radius:3px;cursor:pointer">TRY 17</button>
+        <button onclick="setGroupVal(97)" style="font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:.3rem .8rem;border:1px solid var(--accent3);background:rgba(0,255,136,.08);color:var(--accent3);border-radius:3px;cursor:pointer">TRY 97</button>
+        <button onclick="setGroupVal(0)" style="font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:.3rem .8rem;border:1px solid var(--dim);background:transparent;color:var(--dim);border-radius:3px;cursor:pointer">CLEAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configure Group I/O -->
+  <div class="two-col reveal" style="margin-top:2.5rem">
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 14-3: Configure Group I/O</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>MENU → I/O → Digital → ENTER</strong><p>Start on the Digital I/O screen to identify the signals you want to group.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F3 IN/OUT then F2 CONFIG</strong><p>Display the correct type (DO or DI), then switch to config view to find Rack, Slot, and Start for the signals.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Determine group parameters</strong>
+          <div class="sub-step">Find <span>Rack, Slot, Start Point</span> for the first signal</div>
+          <div class="sub-step">Determine <span>Number of Points</span> (2–16, sequential, same rack/slot)</div>
+        </div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Press F1 [TYPE] → Group → ENTER</strong><p>Navigate to the Group Output (or Input) screen.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Press F2 CONFIG, enter Rack/Slot/Start/Num Pts</strong><p>Fill in the values determined from the Digital I/O screen.</p></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Press NEXT → F2 VERIFY</strong><p>"Port assignment is valid" confirms correct configuration. Cycle power to enable.</p></div></div>
+      </div>
+      <div class="note-box" style="margin-top:1rem">
+        <div class="bi">📌</div>
+        <div class="nt">Group signals must be <strong>2–16 points, sequential,</strong> and on the <strong>same rack and slot</strong>. Cannot span across racks or slots.</div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Group Config Example — DO[2–6] as GO[1]</div>
+      <div class="terminal">
+        <div class="t-header">GROUP OUTPUT CONFIG SCREEN</div>
+        <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+          <tr style="color:var(--dim);font-size:.65rem">
+            <td style="padding:.2rem .4rem">GO #</td><td style="padding:.2rem .4rem">RACK</td><td style="padding:.2rem .4rem">SLOT</td><td style="padding:.2rem .4rem">START PT</td><td style="padding:.2rem .4rem">NUM PTS</td>
+          </tr>
+          <tr>
+            <td style="color:var(--accent2);padding:.3rem .4rem;font-weight:700">1</td>
+            <td style="color:#fff;padding:.3rem .4rem">0</td>
+            <td style="color:#fff;padding:.3rem .4rem">1</td>
+            <td style="color:var(--accent3);padding:.3rem .4rem">22</td>
+            <td style="color:var(--accent3);padding:.3rem .4rem">5</td>
+          </tr>
+          <tr><td style="color:var(--dim);padding:.2rem .4rem">2</td><td style="color:var(--dim);padding:.2rem .4rem">0</td><td style="color:var(--dim);padding:.2rem .4rem">0</td><td style="color:var(--dim);padding:.2rem .4rem">0</td><td style="color:var(--dim);padding:.2rem .4rem">0</td></tr>
+        </table>
+        <div style="margin-top:.7rem;padding:.5rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:3px;color:var(--accent3);font-size:.75rem;text-align:center">Port assignment is valid.</div>
+      </div>
+
+      <div class="sub-title">Force a Group Output in Program</div>
+      <div class="prog-builder">
+        <div class="prog-header"><span class="prog-name-display">EXAMPLE_GROUP</span></div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-io">GO[1]</span>&nbsp;=&nbsp;<span class="pl-speed">17</span>&nbsp;<span style="color:var(--dim);font-style:italic">; turns on DO[1] and DO[5]</span></div>
+          <div class="pl"><span class="pl-num">2</span><span class="pl-io">GO[1]</span>&nbsp;=&nbsp;<span class="pl-speed">0</span>&nbsp;<span style="color:var(--dim);font-style:italic">; turns ALL group outputs OFF</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTROLLING I/O -->
+<section class="section" id="control">
+  <div class="sec-label">14.7 — Controlling I/O</div>
+  <h2 class="sec-title reveal">Monitoring, Forcing &amp; Simulating</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">Controlling I/O lets you test your system during commissioning and troubleshooting. Three modes are available: <strong style="color:#fff">Monitoring</strong> (viewing), <strong style="color:#fff">Forcing</strong> (changing outputs), and <strong style="color:#fff">Simulating</strong> (testing without real signals).</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">14.7.1 — Monitoring I/O</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Simply navigate to MENU → I/O → select the type. Watch signals update in real time as external devices operate. Switch between inputs and outputs with F3 IN/OUT. Sort by number (F2 NUMSRT) or comment (F3 CMT-SRT) using NEXT.</p>
+
+      <div class="sub-title">14.7.2 — Forcing I/O</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Only <strong style="color:#fff">Outputs</strong> can be forced directly — they are signals sent <em>by</em> the controller. To force an Input, it must first be simulated.</p>
+
+      <div class="warn-box">
+        <div class="bi">⚠️</div>
+        <div class="wt"><strong>WARNING:</strong> Forcing digital outputs causes connected devices to physically function. Know exactly what each output controls and how it will move before forcing it — otherwise personnel or equipment could be injured or damaged.</div>
+      </div>
+
+      <div class="sub-title">Procedure 14-4: Force Digital Output from I/O Screen</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>MENU → I/O → Digital → ENTER</strong></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Display Digital Outputs (F3 IN/OUT if needed)</strong></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Cursor to STATUS of the output to force</strong></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>F4 ON or F5 OFF</strong><p>For Group Outputs: navigate to the Group I/O screen and enter the numeric value directly.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 14-5: Force Output via Program Instruction</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor on blank line in program</strong></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F1 [INST] → I/O</strong><p>Press NEXT first if [INST] not visible on F1.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose the desired instruction type</strong><p>Select DO[ ]=, RO[ ]=, GO[ ]=, etc. from the I/O statement menu.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Enter signal number and desired state</strong><p>Options: ON, OFF, Pulse (width), R[ ], or (…) expression.</p></div></div>
+      </div>
+
+      <div class="prog-builder" style="margin-top:1rem">
+        <div class="prog-header"><span class="prog-name-display">GRIPPER_OPEN</span></div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-io">RO[1:Grip Open]</span>&nbsp;=&nbsp;<span style="color:var(--accent3)">ON</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+
+      <div class="sub-title">14.7.3 — Simulating I/O</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Simulating forces signals <em>without</em> real electrical signals entering or leaving the controller. Use it to test program logic when I/O devices aren't yet connected. Works for digital, analog, group, and robot I/O. <strong style="color:#fff">Cannot simulate UOP or SOP I/O.</strong></p>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>MENU → I/O → select type → ENTER</strong></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Cursor to the SIM column of the signal</strong>
+          <div class="sub-step"><span class="sim-badge sim-u">U</span> = Unsimulated &nbsp; <span class="sim-badge sim-s">S</span> = Simulated</div>
+        </div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>F4 SIMULATE / F5 UNSIM</strong><p>Once simulated, the signal can be forced ON or OFF using F4 ON / F5 OFF. Real hardware state is ignored.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Unsimulate all: FCTN → UNSIM ALL I/O</strong><p>Clears all simulated signals at once from the FUNCTION menu.</p></div></div>
+      </div>
+
+      <div class="sub-title">14.8 — Saving I/O Configuration</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:.8rem">Always save I/O configuration data so it can be reloaded if settings are lost or altered.</p>
+      <div class="terminal blue" style="font-size:.75rem">
+        <div class="t-header blue">PROCEDURE 14-7 — SAVE I/O SETTINGS</div>
+        <div>1. Set the Default Device (Section 7.4.1)</div>
+        <div>2. Navigate to the Digital I/O Screen</div>
+        <div>3. Press FCTN → -0- NEXT → SAVE</div>
+        <div style="margin-top:.5rem;color:var(--accent3)">→ File saved: <strong>DIOCFGSV.IO</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LABS -->
+<section class="section" id="labs">
+  <div class="sec-label">Labs 23–25</div>
+  <h2 class="sec-title reveal">Chapter Labs</h2>
+  <div class="reveal">
+
+    <div class="lab-card">
+      <div class="lab-num">LAB 23</div>
+      <div class="lab-title">Create a Group Output</div>
+      <div class="lab-body">Configure a Group Output from a set of Digital Outputs, force it to a value, and verify the correct physical outputs activate.</div>
+      <ol class="lab-steps">
+        <li><strong>Determine parameters for DO[3–9] as GO[1]</strong> — See Section 14.5.4 (pg. 231)
+          <ul class="lab-sub">
+            <li>Rack: ____</li>
+            <li>Slot: ____</li>
+            <li>Start Point: ____</li>
+            <li>Number of Points: ____</li>
+          </ul>
+        </li>
+        <li><strong>Enter data into the Group Output screen to configure GO[1]</strong> — See Section 14.6.1 (pg. 235)</li>
+        <li><strong>Force GO[1] to a value of 97</strong> and verify at the Digital Output screen which DO signals are ON</li>
+        <li>Darken the outputs that are ON in the diagram (DO[3] through DO[9]) and note each bit value</li>
+        <li>Confirm: Do the active outputs represent the binary value of 97?</li>
+        <li><strong>Save I/O configuration to the Individual Files directory</strong> — See Section 14.8 (pg. 241)</li>
+      </ol>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-num">LAB 24</div>
+      <div class="lab-title">Create an I/O Program</div>
+      <div class="lab-body">Create two non-motion programs to open and close the robot gripper using Robot Output instructions.</div>
+      <ol class="lab-steps">
+        <li>Confirm Robot Outputs controlling the gripper are complemented — See Section 14.5.5 (pg. 232)</li>
+        <li>Create a new program called <strong>A_GRIP_OPEN</strong></li>
+        <li>In Program Detail, disable motion group one (non-motion program) — See Section 11.6.5 (pg. 168)</li>
+        <li>Add instruction: <strong>RO[x] = ON</strong> (x = gripper open signal) — See Section 14.7.2 (pg. 238)</li>
+        <li>Create a new program called <strong>A_GRIP_CLOSE</strong> (hint: use the copy feature)</li>
+        <li>In Program Detail, disable motion group one</li>
+        <li>Add instruction: <strong>RO[x] = OFF</strong></li>
+      </ol>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-num">LAB 25</div>
+      <div class="lab-title">Create a Material Handling Program</div>
+      <div class="lab-body">Build a complete pick-and-place program using motion instructions combined with I/O instructions to control a gripper.</div>
+      <ol class="lab-steps">
+        <li>Create a new program called <strong>A_PICK_PART</strong></li>
+        <li>Place the cylinder in the ring marked "PICK POS 1"</li>
+        <li>From HOME, jog to above the part → record as local position, name "Above Pick"</li>
+        <li>Jog down to the part → record as <strong>PR[6]</strong>, name "Pick Pos"</li>
+        <li>Add I/O instruction to <strong>close gripper</strong> (pick the part)</li>
+        <li>Return to "Above Pick"</li>
+        <li>Jog to above the drop position → record as local position, name "Above Drop"</li>
+        <li>Jog down to drop position → record as <strong>PR[7]</strong>, name "Place Pos"</li>
+        <li>Add I/O instruction to <strong>open gripper</strong> (release the part)</li>
+        <li>Return to "Above Drop"</li>
+        <li>Test the program (Step Test → Continuous → Auto)</li>
+      </ol>
+      <div class="prog-builder" style="margin-top:1.2rem">
+        <div class="prog-header"><span class="prog-name-display">A_PICK_PART — SYNTAX</span><span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">13 LINES</span></div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span>=<span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span>=<span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">3</span><span style="color:var(--dim)">;</span></div>
+          <div class="pl"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">5</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1:Above Pick]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">6</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">PR[6:Pick Pos]</span>&nbsp;<span class="pl-speed">250mm/sec</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">7</span><span class="pl-io">RO[1:Grip Open]</span>&nbsp;=&nbsp;<span style="color:#ff3232">OFF</span></div>
+          <div class="pl"><span class="pl-num">8</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1:Above Pick]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">9</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[2:Above Place]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">10</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">PR[7:Place Pos]</span>&nbsp;<span class="pl-speed">250mm/sec</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">11</span><span class="pl-io">RO[1:Grip Open]</span>&nbsp;=&nbsp;<span style="color:var(--accent3)">ON</span></div>
+          <div class="pl"><span class="pl-num">12</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[2:Above Place]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">13</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">14.9 — Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.9rem;margin-bottom:1.5rem">Test your understanding of Chapter 14: Inputs and Outputs.</p>
+  <div class="quiz-wrap reveal" id="qC"></div>
+</section>
+
+<div style="height:6rem;position:relative;z-index:10;text-align:center;padding-top:2rem">
+  <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);letter-spacing:.25em">FANUC AMERICA CORPORATION © 2020 — MATAGHAND0318CE — CHAPTER 14</span>
+</div>
+
+<script>
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  document.getElementById('pb').style.width=(window.scrollY/h*100)+'%';
+});
+
+// Particles
+for(let i=0;i<18;i++){
+  const p=document.createElement('div');p.className='particle';
+  p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s;--drift:${(Math.random()-.5)*120}px`;
+  document.body.appendChild(p);
+}
+
+// Reveal on scroll
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});
+},{threshold:.1});
+document.querySelectorAll('.reveal,.step').forEach(el=>ro.observe(el));
+
+// ── BINARY GROUP VISUALIZER ──
+const weights=[64,32,16,8,4,2,1];
+const labels=['DO[7]','DO[6]','DO[5]','DO[4]','DO[3]','DO[2]','DO[1]'];
+const bits=new Array(7).fill(0);
+
+function renderBits(){
+  const row=document.getElementById('bitRow');
+  if(!row)return;
+  row.innerHTML='';
+  weights.forEach((w,i)=>{
+    const box=document.createElement('div');
+    box.className='bit-box'+(bits[i]?' on':'');
+    box.innerHTML=`<div class="bit-label">${labels[i]}</div><div class="bit-val">${bits[i]}</div><div class="bit-weight">${w}</div>`;
+    box.onclick=()=>{bits[i]=bits[i]?0:1;renderBits();};
+    row.appendChild(box);
+  });
+  const val=bits.reduce((s,b,i)=>s+(b?weights[i]:0),0);
+  document.getElementById('groupVal').textContent=val;
+  const onBits=bits.map((b,i)=>b?`${weights[i]}`:null).filter(Boolean);
+  document.getElementById('groupHint').textContent=val===0?'All bits OFF → value = 0':onBits.join(' + ')+' = '+val;
+}
+
+function setGroupVal(n){
+  weights.forEach((w,i)=>{bits[i]=(n&w)?1:0;});
+  renderBits();
+}
+
+renderBits();
+
+// ── QUIZ ──
+const Qs=[
+  {
+    q:'To configure Group I/O, all of the signals must be on the same rack and ______?',
+    opts:['Start Point','Slot','Hardware type','Analog channel'],
+    correct:1,
+    explain:'Group I/O signals must be on the same rack AND the same slot. They must also be sequential and the group must contain 2–16 signals.',
+    wrongExplain:'The rack alone is not enough — all signals in a group must share the same rack AND slot. Start Point just identifies where in that slot the group begins.'
+  },
+  {
+    q:'What type of I/O handles communication between the controller and the robot itself (end effector connector)?',
+    opts:['Digital I/O','UOP I/O','Robot I/O','SOP I/O'],
+    correct:2,
+    explain:'Robot I/O (RI/RO) signals are sent between the controller and the robot via the End Effector (EE) connector. HandlingTool provides 8 Robot Inputs and 8 Robot Outputs.',
+    wrongExplain:'Digital I/O connects to external devices. UOP connects to remote operator panels. SOP is the internal controller panel. Only Robot I/O (RI/RO) goes directly to the robot\'s EE connector.'
+  },
+  {
+    q:'Before forcing an input signal it must first be ______?',
+    opts:['Simulated','Configured','Part of a Group','Inputs can never be forced'],
+    correct:0,
+    explain:'Only outputs can be forced directly because they are signals sent by the controller. To force an Input you must first simulate it — simulation allows you to set its value independently of any real incoming signal.',
+    wrongExplain:'While inputs must be configured to exist, the specific prerequisite for forcing an input is simulation. Without simulating first, the actual incoming hardware signal controls the input state.'
+  },
+  {
+    q:'The UNSIM ALL I/O function can be found at which menu?',
+    opts:['I/O Menu','Main Menu','Function (FCTN) Menu','Cell Setup Menu'],
+    correct:2,
+    explain:'UNSIM ALL I/O is accessed via the FCTN (Function) key on the teach pendant. Press FCTN and navigate to "UNSIM ALL I/O" to clear all simulated signals at once.',
+    wrongExplain:'It is not in the I/O menu, Main Menu, or Cell Setup. The FCTN key on the teach pendant gives access to system functions including UNSIM ALL I/O.'
+  },
+  {
+    q:'After changing I/O configuration (Rack/Slot/Start), what must you do for the change to take effect?',
+    opts:['Press F5 APPLY','The change takes effect immediately','Turn the controller OFF then back ON (cycle power)','Select a new program'],
+    correct:2,
+    explain:'After any I/O configuration change, you must cycle power — turn the controller OFF and back ON. The configuration shows as PEND (pending) until the power cycle completes.',
+    wrongExplain:'There is no APPLY button that activates I/O changes in real time. Changes remain in PEND status until the controller is power-cycled. Selecting a new program has no effect on I/O configuration.'
+  },
+  {
+    q:'A Group Output is set to a value of 17. Which Digital Outputs will be ON?',
+    opts:['DO[1] and DO[16]','DO[1] and DO[5]','DO[4] and DO[3]','DO[8] and DO[9]'],
+    correct:1,
+    explain:'17 in binary is 10001 — bit 1 (value 1) and bit 5 (value 16) are ON. So DO[1] (bit weight 1) and DO[5] (bit weight 16) will be activated. 16 + 1 = 17.',
+    wrongExplain:'Binary bit weights are 1, 2, 4, 8, 16, 32... 17 = 16 + 1, which corresponds to bit 5 (weight 16) and bit 1 (weight 1), meaning DO[5] and DO[1] are ON.'
+  },
+  {
+    q:'Which types of I/O CANNOT be simulated?',
+    opts:['Digital and Analog I/O','Group and Robot I/O','UOP and SOP I/O','Analog and Group I/O'],
+    correct:2,
+    explain:'You can simulate digital, analog, group, and robot I/O. You CANNOT simulate UOP (User Operator Panel) or SOP (Standard Operator Panel) I/O.',
+    wrongExplain:'Digital, Analog, Group, and Robot I/O can all be simulated. The restriction applies specifically to UOP and SOP signals.'
+  },
+  {
+    q:'What is the purpose of the Complementary setting on a Digital Output?',
+    opts:['It doubles the voltage on the output','It links an odd output and its corresponding even output so they are always opposite states','It makes the output pulse rather than latch','It converts the output to an analog signal'],
+    correct:1,
+    explain:'The Complementary setting pairs an odd-numbered output with its corresponding even-numbered output so that when one is ON the other is automatically OFF, and vice versa. Only odd outputs can be complemented with the corresponding even output.',
+    wrongExplain:'Complementary does not affect voltage, create pulses, or convert signal types. It creates a paired relationship between adjacent odd/even outputs where their states are always opposite.'
+  },
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{
+    el.classList.add('locked');
+    if(idx===q.correct)el.classList.add('correct');
+    else if(idx===i&&idx!==q.correct)el.classList.add('wrong');
+  });
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent2);text-shadow:var(--glow2);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 14: Inputs and Outputs.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

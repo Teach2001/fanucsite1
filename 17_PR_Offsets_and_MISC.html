@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC PR Offsets and MISC — Chapter 17</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent2),var(--accent));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent2);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent2);text-shadow:var(--glow2)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent2);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(1.6rem,5.5vw,4.5rem);font-weight:900;line-height:1.05;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow2),0 0 60px rgba(255,107,0,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent2)}
+  .hero-sub{font-size:clamp(.9rem,2vw,1.2rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(255,107,0,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(0,212,255,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent2);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent2),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent2),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent2);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent2);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow2);animation:pg 2s ease infinite}
+  .sdot.b{background:var(--accent);box-shadow:var(--glow)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}.sdot.p{background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.5)}.sdot.y{background:#facc15;box-shadow:0 0 12px rgba(250,204,21,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .info-box{background:rgba(255,107,0,.05);border:1px solid rgba(255,107,0,.25);border-left:3px solid var(--accent2);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .warn-box{background:rgba(255,50,50,.07);border:1px solid rgba(255,50,50,.35);border-left:3px solid #ff3232;border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0;animation:wp 3s ease infinite}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+  .it{font-size:.85rem;color:#ffc080;line-height:1.7}.it strong{color:#ffe0c0}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  .terminal{background:#030a0f;border:1px solid var(--accent2);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .terminal.blue{border-color:var(--accent)}
+  .t-header{color:var(--accent2);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(255,107,0,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-header.blue{color:var(--accent);border-bottom-color:rgba(0,212,255,.2)}
+  .t-lbl{color:var(--accent)}.t-val{color:#fff}.t-ok{color:var(--accent3)}.t-warn{color:var(--accent2)}.t-dim{color:var(--dim)}
+
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent2),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent2);flex-shrink:0;box-shadow:var(--glow2);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+  .step-body .sub-step{margin-top:.4rem;padding:.4rem .7rem;background:rgba(0,212,255,.04);border-left:2px solid rgba(0,212,255,.2);font-size:.79rem;color:var(--dim);line-height:1.6}
+  .step-body .sub-step span{color:var(--accent2)}
+
+  /* Syntax diagram box */
+  .syntax-box{background:#030a0f;border:1px solid var(--border);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.8rem;line-height:2;color:var(--text);overflow-x:auto;margin:1rem 0}
+  .sy-kw{color:var(--accent2);font-weight:700}.sy-var{color:#a78bfa}.sy-op{color:var(--accent3)}.sy-val{color:var(--accent)}.sy-dim{color:var(--dim)}.sy-reg{color:#facc15}
+
+  /* PR element grid */
+  .element-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+  .element-table{background:#030a0f;border:1px solid var(--border);border-radius:4px;overflow:hidden;font-family:'Share Tech Mono',monospace;font-size:.78rem}
+  .element-table th{background:rgba(0,212,255,.06);color:var(--accent);font-size:.65rem;letter-spacing:.15em;padding:.5rem .8rem;text-align:left;border-bottom:1px solid var(--border)}
+  .element-table td{padding:.4rem .8rem;border-bottom:1px solid rgba(26,58,92,.25)}
+  .element-table td:first-child{color:var(--accent2);font-weight:700}
+  .element-table td:last-child{color:#fff}
+
+  /* Interactive offset visualizer */
+  .offset-demo{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;margin-top:1rem}
+  .coord-display{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.2rem}
+  .coord-cell{background:#030a0f;border:1px solid var(--border);border-radius:3px;padding:.8rem;text-align:center;transition:border-color .3s}
+  .coord-cell.active{border-color:var(--accent3)}
+  .coord-cell .coord-label{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);letter-spacing:.2em;margin-bottom:.3rem}
+  .coord-cell .coord-base{font-family:'Orbitron',monospace;font-size:1rem;color:#fff;font-weight:700}
+  .coord-cell .coord-offset{font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--accent3);margin-top:.15rem}
+  .coord-cell .coord-result{font-family:'Orbitron',monospace;font-size:.85rem;color:var(--accent2);margin-top:.2rem;font-weight:700}
+  .offset-controls{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem}
+  .oc-wrap{display:flex;flex-direction:column;gap:.25rem}
+  .oc-wrap label{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--dim);letter-spacing:.15em;text-transform:uppercase}
+  .oc-wrap input{background:#030a0f;border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:.8rem;padding:.4rem .6rem;outline:none;width:100%;transition:border-color .2s}
+  .oc-wrap input:focus{border-color:var(--accent2)}
+  .apply-btn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.55rem 1.3rem;border-radius:3px;border:1px solid var(--accent3);background:rgba(0,255,136,.07);color:var(--accent3);cursor:pointer;transition:all .2s}
+  .apply-btn:hover{background:rgba(0,255,136,.13)}
+  .reset-btn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.55rem 1.3rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s;margin-left:.5rem}
+  .reset-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+  .offset-formula{background:#030a0f;border:1px solid rgba(0,212,255,.2);border-radius:3px;padding:.7rem 1rem;font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--dim);margin-top:.8rem;text-align:center}
+
+  /* Misc instruction cards */
+  .misc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+  .misc-card{border-radius:4px;padding:1.4rem;transition:transform .3s}
+  .misc-card:hover{transform:translateY(-3px)}
+  .misc-card.timer{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .misc-card.override{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .misc-card.remark{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .misc-card.message{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.35)}
+  .mc-icon{font-size:1.8rem;margin-bottom:.4rem}
+  .mc-name{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em}
+  .misc-card.timer .mc-name{color:var(--accent)}.misc-card.override .mc-name{color:var(--accent2)}.misc-card.remark .mc-name{color:var(--accent3)}.misc-card.message .mc-name{color:#a78bfa}
+  .mc-tag{font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:.1rem .35rem;border-radius:2px;display:inline-block;margin-bottom:.5rem;border:1px solid currentColor;opacity:.7}
+  .misc-card.timer .mc-tag{color:var(--accent)}.misc-card.override .mc-tag{color:var(--accent2)}.misc-card.remark .mc-tag{color:var(--accent3)}.misc-card.message .mc-tag{color:#a78bfa}
+  .mc-body{font-size:.8rem;color:var(--dim);line-height:1.7}
+
+  /* Program display */
+  .prog-builder{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .prog-header{background:rgba(255,107,0,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .prog-name-display{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--accent2);letter-spacing:.15em}
+  .prog-body{padding:1rem 1.2rem;font-family:'Share Tech Mono',monospace;font-size:.77rem}
+  .pl{line-height:2;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+  .pl-num{color:var(--dim);min-width:2.2rem;text-align:right;flex-shrink:0}
+  .pl-kw{color:var(--accent2)}.pl-motion{color:var(--accent)}.pl-pos{color:#a78bfa}.pl-offset{color:var(--accent3)}.pl-io{color:#facc15}.pl-remark{color:#6b9e6b;font-style:italic}.pl-end{color:var(--dim)}.pl-timer{color:#facc15}.pl-msg{color:#c084fc}
+
+  /* Lab card */
+  .lab-card{background:var(--panel);border:1px solid rgba(0,255,136,.3);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+  .lab-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent3),transparent)}
+  .lab-num{font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--accent3);letter-spacing:.2em;margin-bottom:.3rem}
+  .lab-title{font-family:'Orbitron',sans-serif;font-size:1rem;color:#fff;margin-bottom:.8rem}
+  .lab-body{font-size:.85rem;color:var(--dim);line-height:1.8}
+  .lab-steps{margin-top:1rem;display:flex;flex-direction:column;gap:.4rem;padding-left:1.2rem}
+  .lab-steps li{font-size:.82rem;color:var(--dim);line-height:1.7}
+  .lab-steps li strong{color:var(--text)}
+  .lab-sub{margin-top:.3rem;padding-left:1.2rem;display:flex;flex-direction:column;gap:.25rem}
+  .lab-sub li{font-size:.8rem;color:var(--dim);line-height:1.6;list-style:lower-alpha}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem;margin-top:1rem}
+  .quiz-q{font-size:.98rem;color:#fff;font-weight:600;line-height:1.6;margin-bottom:1.5rem}
+  .quiz-opts{display:flex;flex-direction:column;gap:.75rem}
+  .quiz-opt{display:flex;align-items:center;gap:.9rem;padding:.9rem 1.1rem;background:#030a0f;border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .2s;font-size:.85rem;color:var(--dim)}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent2);color:#fff;background:rgba(255,107,0,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.06)}
+  .quiz-opt.wrong{border-color:#ff3232;color:#ff8888;background:rgba(255,50,50,.06)}
+  .quiz-opt.locked{cursor:default}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;width:1.6rem;height:1.6rem;border-radius:50%;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .quiz-fb{margin-top:1.2rem;font-size:.85rem;line-height:1.7;border-radius:3px;padding:0;max-height:0;overflow:hidden;transition:all .4s ease;opacity:0}
+  .quiz-fb.show{max-height:240px;padding:.9rem 1.1rem;opacity:1}
+  .quiz-fb.good{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.3);color:var(--accent3)}
+  .quiz-fb.bad{background:rgba(255,50,50,.07);border:1px solid rgba(255,50,50,.3);color:#ff8888}
+  .quiz-nav{margin-top:1.2rem;display:flex;gap:.8rem;justify-content:flex-end}
+  .qbtn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.5rem 1.2rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s}
+  .qbtn:hover,.qbtn.pri{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.08)}
+  .qbtn.pri{box-shadow:var(--glow2)}
+
+  @media(max-width:768px){nav .nav-links{display:none}.misc-grid{grid-template-columns:1fr 1fr}.element-grid{grid-template-columns:1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+
+<nav>
+  <a class="nav-logo" href="#">FANUC // CH.17</a>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#prx">PR[x]</a></li>
+    <li><a href="#prij">PR[i,j]</a></li>
+    <li><a href="#offset">Offset</a></li>
+    <li><a href="#misc">MISC</a></li>
+    <li><a href="#labs">Labs</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool — Chapter 17</div>
+  <h1>17: PR <span>Offsets</span> &amp; MISC.</h1>
+  <div class="hero-sub">Position Registers · Element Instructions · Offset Motion · Timer / Override / Remark / Message</div>
+  <div class="hero-cw">
+    <div class="terminal" style="min-width:360px;text-align:left">
+      <div class="t-header">OFFSET PROGRAM EXAMPLE</div>
+      <div><span class="t-dim"> 5: </span><span class="t-ok">LBL[1]</span></div>
+      <div><span class="t-dim"> 6: </span><span class="t-lbl">J P[1:Square] 100% CNT50</span></div>
+      <div><span class="t-dim">  : </span><span class="t-warn">Offset,PR[5]</span></div>
+      <div><span class="t-dim">11: </span><span class="t-warn">PR[5,3]=PR[5,3]+50</span></div>
+      <div><span class="t-dim">12: </span><span class="t-lbl">R[1]=R[1]+1</span></div>
+      <div><span class="t-dim">13: </span><span class="t-lbl">IF R[1]&lt;5, JMP LBL[1]</span></div>
+    </div>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO EXPLORE ▼</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section" id="overview">
+  <div class="sec-label">17.2 — Overview</div>
+  <h2 class="sec-title reveal">Position Registers Overview</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Position Registers store <strong style="color:#fff">global positional data</strong> — X, Y, Z, W, P, R, and configuration — for shared use across many programs. They can define where the robot moves, store frame data, joint angles, and offset values. Up to <strong style="color:var(--accent2)">372 Position Registers</strong> are available on an R-30iB PLUS controller.</p>
+
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.6rem;color:var(--accent2);font-weight:900">PR[x]</div>
+      <div class="card-title">Whole Register</div>
+      <div class="card-body">Manipulates the entire position register at once — assignment and arithmetic on all X, Y, Z, W, P, R elements simultaneously. Use to store LPOS, JPOS, copy another PR, or apply tool/user frames.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.6rem;color:var(--accent);font-weight:900">PR[i,j]</div>
+      <div class="card-title">Element Instruction</div>
+      <div class="card-body">Targets a specific element (i = register number, j = element 1–6 for X/Y/Z/W/P/R). Allows precision manipulation of a single axis value — for example, adding 50mm to Z only.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.6rem;color:var(--accent3);font-weight:900">Offset</div>
+      <div class="card-title">PR Offset Motion Option</div>
+      <div class="card-body">Appended to a motion instruction as <span style="font-family:'Share Tech Mono',monospace">Offset,PR[x]</span>. Shifts the target position by the values stored in the PR — only for the line where it appears.</div>
+    </div>
+  </div>
+
+  <div class="note-box reveal">
+    <div class="bi">📌</div>
+    <div class="nt">If the controller has <strong>multiple motion groups</strong>, the number of Position Registers per group may be reduced depending on how many groups are present.</div>
+  </div>
+</section>
+
+<!-- PR[x] SECTION -->
+<section class="section" id="prx">
+  <div class="sec-label">17.3.1 — PR[x] Instructions</div>
+  <h2 class="sec-title reveal">PR[x] Position Register Instructions</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:1.5rem">PR[x] instructions manipulate the <strong style="color:#fff">entire position register</strong>. They include assignment (=) and arithmetic (+/−) instructions.</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Assignment — PR[GRPn:x] = [value]</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.8;margin-bottom:.8rem">Sets the value of the item on the right into the PR on the left.</p>
+      <div class="syntax-box">
+        <span class="sy-kw">PR</span>[<span class="sy-var">GRPn</span>:<span class="sy-var">x</span>] = [<span class="sy-val">value</span>]<br>
+        <span class="sy-dim">  ↑ GRPn: Group number (1–3), optional</span><br>
+        <span class="sy-dim">  ↑ x: PR number (Direct 1–32, or Indirect R[x])</span><br><br>
+        <span class="sy-dim">Value options:</span><br>
+        <span class="sy-val">  LPOS</span><span class="sy-dim">  — current Cartesian coordinates (X,Y,Z,W,P,R)</span><br>
+        <span class="sy-val">  JPOS</span><span class="sy-dim">  — current joint angles</span><br>
+        <span class="sy-val">  PR[x]</span><span class="sy-dim"> — contents of another PR</span><br>
+        <span class="sy-val">  P[x]</span><span class="sy-dim">  — contents of a taught point</span><br>
+        <span class="sy-val">  UFRAME[] / UTOOL[]</span>
+      </div>
+
+      <div class="sub-title">Arithmetic — PR[GRPn:x] = [value] [op] [value]</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.8;margin-bottom:.8rem">Adds or subtracts two items and stores the result in a PR.</p>
+      <div class="syntax-box">
+        <span class="sy-kw">PR</span>[<span class="sy-var">x</span>] = [<span class="sy-val">value</span>] <span class="sy-op">+</span> [<span class="sy-val">value</span>]<br>
+        <span class="sy-kw">PR</span>[<span class="sy-var">x</span>] = [<span class="sy-val">value</span>] <span class="sy-op">−</span> [<span class="sy-val">value</span>]<br><br>
+        <span class="sy-dim">Left-side value sources:</span><br>
+        <span class="sy-dim">  LPOS, JPOS, UTOOL[x], UFRAME[x], PR[x], P[x]</span><br><br>
+        <span class="sy-dim">Operators: </span><span class="sy-op">+</span><span class="sy-dim"> addition, </span><span class="sy-op">−</span><span class="sy-dim"> subtraction, </span><span class="sy-dim">&lt;cr&gt; terminate without operator</span>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Example Usage</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <div class="prog-name-display">PR EXAMPLES</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1:</span><span class="pl-kw">PR[1]=LPOS</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Store current Cartesian position</span></div>
+          <div class="pl"><span class="pl-num">2:</span><span class="pl-kw">PR[2]=JPOS</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Store current joint angles</span></div>
+          <div class="pl"><span class="pl-num">3:</span><span class="pl-kw">PR[3]=PR[1]</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Copy PR[1] into PR[3]</span></div>
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">PR[4]=P[1]</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Copy taught point P[1]</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span class="pl-kw">PR[5]=PR[1]+PR[2]</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Add two PRs</span></div>
+          <div class="pl"><span class="pl-num">6:</span><span class="pl-kw">PR[GRP1:1]=LPOS</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Group-specific assignment</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:.8rem">
+        <div class="bi">📌</div>
+        <div class="nt">When manipulating values with a Position Register, the data is relative to the <strong>active User and Tool Frame</strong>.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PR[i,j] SECTION -->
+<section class="section" id="prij">
+  <div class="sec-label">17.3.2 — PR[i,j] Element Instructions</div>
+  <h2 class="sec-title reveal">PR[i, j] Position Register Element Instructions</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:1.5rem">PR[i, j] targets a <strong style="color:#fff">specific element</strong> of a position register. <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">i</span> = the register number, <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">j</span> = the element within that register (1–6 for Cartesian, 1–n for Joint).</p>
+
+  <div class="element-grid reveal">
+    <table class="element-table">
+      <thead><tr><th>j</th><th>Cartesian Element</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>X — lateral</td></tr>
+        <tr><td>2</td><td>Y — longitudinal</td></tr>
+        <tr><td>3</td><td>Z — vertical</td></tr>
+        <tr><td>4</td><td>W — roll rotation</td></tr>
+        <tr><td>5</td><td>P — pitch rotation</td></tr>
+        <tr><td>6</td><td>R — yaw rotation</td></tr>
+      </tbody>
+    </table>
+    <table class="element-table">
+      <thead><tr><th>j</th><th>Joint Element</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Joint 1 (J1)</td></tr>
+        <tr><td>2</td><td>Joint 2 (J2)</td></tr>
+        <tr><td>3</td><td>Joint 3 (J3)</td></tr>
+        <tr><td>4</td><td>Joint 4 (J4)</td></tr>
+        <tr><td>5</td><td>Joint 5 (J5)</td></tr>
+        <tr><td>6</td><td>Joint 6 (J6)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="two-col reveal" style="margin-top:1.5rem">
+    <div>
+      <div class="sub-title" style="margin-top:0">Assignment — PR[i,j] = [value]</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.8;margin-bottom:.8rem">Sets a single element of a PR to the specified value. Value sources include I/O signals, constants, registers, timers, and other PR elements.</p>
+      <div class="syntax-box">
+        <span class="sy-kw">PR</span>[<span class="sy-var">i</span>, <span class="sy-var">j</span>] = [<span class="sy-val">value</span>]<br><br>
+        <span class="sy-dim">Common value sources:</span><br>
+        <span class="sy-dim">  Constant value</span><br>
+        <span class="sy-dim">  R[x] — Data Register</span><br>
+        <span class="sy-dim">  DI[x]/DO[x], RI[x]/RO[x]</span><br>
+        <span class="sy-dim">  AI[x]/AO[x] — Analog I/O</span><br>
+        <span class="sy-dim">  GI[x]/GO[x] — Group I/O</span><br>
+        <span class="sy-dim">  PR[x,y] — another PR element</span><br>
+        <span class="sy-dim">  TIMER[x] — timer value</span>
+      </div>
+
+      <div class="sub-title">Arithmetic — PR[i,j] = [value] [op] [value]</div>
+      <div class="syntax-box">
+        <span class="sy-kw">PR</span>[<span class="sy-var">i</span>, <span class="sy-var">j</span>] = [<span class="sy-val">value</span>] <span class="sy-op">+ − * / DIV MOD</span> [<span class="sy-val">value</span>]<br><br>
+        <span class="sy-dim">Operators: + − * / DIV MOD</span><br>
+        <span class="sy-dim">Mix rules: + and − together OK; * and / together OK</span><br>
+        <span class="sy-dim">Cannot mix + with * in the same instruction</span><br>
+        <span class="sy-dim">Max 5 operators per instruction</span>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Practical Examples</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <div class="prog-name-display">PR[i,j] EXAMPLES</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1:</span><span class="pl-kw">PR[5,3]=0</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Set Z element of PR[5] to 0</span></div>
+          <div class="pl"><span class="pl-num">2:</span><span class="pl-kw">PR[5,3]=PR[5,3]+50</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Add 50mm to Z</span></div>
+          <div class="pl"><span class="pl-num">3:</span><span class="pl-kw">PR[5,3]=100</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Set Z = 100mm directly</span></div>
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">PR[6,1]=PR[6,1]+65</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Shift X by 65mm each cycle</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span class="pl-kw">PR[5,3]=PR[5,3]+15</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// +15mm Z per cycle (Lab 30)</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+      <div class="info-box" style="margin-top:.8rem">
+        <div class="bi">⚡</div>
+        <div class="it">PR[i,j] is the key to <strong>incremental offsetting</strong>. By adding a delta to a single element each cycle, the robot shifts its path incrementally — perfect for stacking or palletizing applications.</div>
+      </div>
+
+      <div class="sub-title">Procedure 17-1: Programming a PR Instruction</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor → F1 [INST]</strong><p>Press NEXT if INST is not shown on F1.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Select Register (option 1)</strong><p>Navigate to Registers from the instruction list.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose arithmetic template</strong><p>Select …=… for assignment or …=…+… for addition. Operator can be changed later with F4 [CHOICE].</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Choose PR[ ] or PR[i,j] as register type</strong><p>Select option 2 for PR[ ] (whole register) or option 3 for PR[i,j] (element).</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Enter register number and element (for PR[i,j])</strong><p>Example: register 5, element 3 → PR[5,3] (the Z element).</p></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Choose value type and quantify</strong><p>Select CONSTANT, R[ ], PR[i,j], or another source. Enter the numeric value.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OFFSET SECTION -->
+<section class="section" id="offset">
+  <div class="sec-label">17.4 — OFFSET, PR Motion Option</div>
+  <h2 class="sec-title reveal">OFFSET, PR[x] Motion Option</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:1.5rem">The <strong style="color:var(--accent2)">Offset, PR[x]</strong> motion option shifts a target position by the X, Y, Z, W, P, R values stored in a Position Register. It is appended directly to a motion instruction and applies <strong style="color:#fff">only to that single line</strong>.</p>
+
+  <div class="warn-box reveal">
+    <div class="bi">⚠️</div>
+    <div class="wt"><strong>Critical Rules:</strong> The offset applies ONLY to the motion instruction where it appears. All six elements of the Position Register must be initialized — no element can be uninitialized (even if offsetting in only one direction).</div>
+  </div>
+
+  <!-- Interactive offset demo -->
+  <div class="sub-title reveal">Interactive Offset Calculator</div>
+  <p class="reveal" style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:.8rem">Enter the base position (P[1]) values and an offset PR value. The calculator shows the resulting position sent to the robot when <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">Offset,PR[5]</span> is applied.</p>
+  <div class="offset-demo reveal">
+    <div style="font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--dim);margin-bottom:.8rem;letter-spacing:.15em">BASE POSITION — P[1]</div>
+    <div class="offset-controls" id="baseControls">
+      <div class="oc-wrap"><label>X (mm)</label><input type="number" id="bx" value="26" oninput="calcOffset()"></div>
+      <div class="oc-wrap"><label>Y (mm)</label><input type="number" id="by" value="180" oninput="calcOffset()"></div>
+      <div class="oc-wrap"><label>Z (mm)</label><input type="number" id="bz" value="400" oninput="calcOffset()"></div>
+    </div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--dim);margin-bottom:.8rem;letter-spacing:.15em">OFFSET REGISTER — PR[5]</div>
+    <div class="offset-controls" id="offsetControls">
+      <div class="oc-wrap"><label>X offset (mm)</label><input type="number" id="ox" value="0" oninput="calcOffset()"></div>
+      <div class="oc-wrap"><label>Y offset (mm)</label><input type="number" id="oy" value="0" oninput="calcOffset()"></div>
+      <div class="oc-wrap"><label>Z offset (mm)</label><input type="number" id="oz" value="50" oninput="calcOffset()"></div>
+    </div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--dim);margin-bottom:.8rem;letter-spacing:.15em">RESULT — ACTUAL TARGET POSITION</div>
+    <div class="coord-display" id="resultDisplay">
+      <div class="coord-cell" id="rx"><div class="coord-label">X (mm)</div><div class="coord-base" id="rxb">26</div><div class="coord-offset" id="rxo">+ 0</div><div class="coord-result" id="rxr">= 26</div></div>
+      <div class="coord-cell" id="ry"><div class="coord-label">Y (mm)</div><div class="coord-base" id="ryb">180</div><div class="coord-offset" id="ryo">+ 0</div><div class="coord-result" id="ryr">= 180</div></div>
+      <div class="coord-cell active" id="rz"><div class="coord-label">Z (mm)</div><div class="coord-base" id="rzb">400</div><div class="coord-offset" id="rzo">+ 50</div><div class="coord-result" id="rzr">= 450</div></div>
+    </div>
+    <div class="offset-formula" id="offsetFormula">
+      J P[1:Square] 100% CNT50 : <span style="color:var(--accent2)">Offset,PR[5]</span> → Target Z: 400 + 50 = <span style="color:var(--accent3)">450 mm</span>
+    </div>
+  </div>
+
+  <!-- Important rules -->
+  <div class="sub-title reveal">17.4.1 — Key Rules for OFFSET, PR[x]</div>
+  <div class="two-col reveal">
+    <ul class="specs-list">
+      <li class="spec-item">
+        <div class="sdot"></div>
+        <div class="spec-text">
+          <strong>Relative to active USER Frame</strong>
+          <span>Offset data in the PR is interpreted relative to the currently active USER Frame orientation — not the World frame.</span>
+        </div>
+      </li>
+      <li class="spec-item">
+        <div class="sdot r"></div>
+        <div class="spec-text">
+          <strong>Single-instruction scope</strong>
+          <span>The offset is applied ONLY to the motion instruction where it appears. Other motion lines are unaffected.</span>
+        </div>
+      </li>
+      <li class="spec-item">
+        <div class="sdot g"></div>
+        <div class="spec-text">
+          <strong>All elements must be initialized</strong>
+          <span>Even if you only want to offset Z, all six elements (X, Y, Z, W, P, R) must have values — none can be uninitialized or left as *.</span>
+        </div>
+      </li>
+    </ul>
+    <ul class="specs-list">
+      <li class="spec-item">
+        <div class="sdot b"></div>
+        <div class="spec-text">
+          <strong>Cartesian PR: adds element-by-element</strong>
+          <span>Each element of PR[x] is added to the corresponding element of the target position. Position is internally converted to Cartesian if needed.</span>
+        </div>
+      </li>
+      <li class="spec-item">
+        <div class="sdot p"></div>
+        <div class="spec-text">
+          <strong>JOINT PR: no offset user frame</strong>
+          <span>If PR[x] is in JOINT representation, each joint angle element is added. No offset user frame is applied in this case.</span>
+        </div>
+      </li>
+      <li class="spec-item">
+        <div class="sdot y"></div>
+        <div class="spec-text">
+          <strong>TOOL OFFSET, PR[x] variant</strong>
+          <span>Choosing TOOL OFFSET, PR[x] instead offsets the position relative to the Tool Frame orientation rather than the User Frame.</span>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Procedure 17-2 -->
+  <div class="sub-title reveal">Procedure 17-2: Programming OFFSET, PR[x]</div>
+  <div class="two-col reveal">
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor on the motion instruction</strong><p>Position cursor on the line where you want to add the offset option.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F4 [CHOICE]</strong><p>Opens the Motion Option menu.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose Offset,PR[ ] (option 5)</strong><p>From the Motion Modify menu. Choosing TOOL OFFSET instead offsets relative to the Tool Frame.</p><div class="sub-step">Menu: <span>1-No option, 2-ACC, 3-Skip,LBL[], 4-Offset/Frames, 5-Offset,PR[ ], 6-Incremental, 7-Tool_Offset</span></div></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Enter the PR number</strong><p>Type the Position Register number to use as the offset source (e.g., 5 for PR[5]).</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Repeat for other motion instructions if needed</strong><p>Each motion line that needs the offset must have Offset,PR[x] added individually.</p></div></div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">5-Cycle Offset Program</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <div class="prog-name-display">FANUC_ACADEMY</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">1/15</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1:</span><span class="pl-kw">UFRAME_NUM=1</span></div>
+          <div class="pl"><span class="pl-num">2:</span><span class="pl-kw">UTOOL_NUM=1</span></div>
+          <div class="pl"><span class="pl-num">3:</span><span class="pl-kw">R[1]=0</span></div>
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-motion">J PR[1] 100% FINE</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+          <div class="pl"><span class="pl-num">6:</span><span class="pl-motion">J P[1:Square] 100% CNT50</span></div>
+          <div class="pl"><span class="pl-num"> :</span><span class="pl-offset">Offset,PR[5]</span></div>
+          <div class="pl"><span class="pl-num">7:</span><span class="pl-motion">L P[2] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num"> :</span><span class="pl-offset">Offset,PR[5]</span></div>
+          <div class="pl"><span class="pl-num">8:</span><span class="pl-motion">L P[3] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num"> :</span><span class="pl-offset">Offset,PR[5]</span></div>
+          <div class="pl"><span class="pl-num">10:</span><span class="pl-motion">L P[1:Square] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num"> :</span><span class="pl-offset">Offset,PR[5]</span></div>
+          <div class="pl"><span class="pl-num">11:</span><span class="pl-kw">PR[5,3]=PR[5,3]+50</span><span style="color:var(--dim);margin-left:.4rem;font-size:.68rem">// +50mm Z per cycle</span></div>
+          <div class="pl"><span class="pl-num">12:</span><span class="pl-kw">R[1]=R[1]+1</span></div>
+          <div class="pl"><span class="pl-num">13:</span><span class="pl-kw">IF R[1]&lt;5, JMP LBL[1]</span></div>
+          <div class="pl"><span class="pl-num">14:</span><span class="pl-motion">J PR[1] 100% FINE</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MISC INSTRUCTIONS -->
+<section class="section" id="misc">
+  <div class="sec-label">17.5 — Miscellaneous Instructions</div>
+  <h2 class="sec-title reveal">Miscellaneous Instructions</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Miscellaneous instructions handle <strong style="color:#fff">timer control, speed override, program annotation, and user messaging</strong>. All are accessed via Miscellaneous from the [INST] menu.</p>
+
+  <div class="misc-grid reveal">
+    <div class="misc-card timer">
+      <div class="mc-icon">⏱️</div>
+      <div class="mc-name">Timer</div>
+      <div class="mc-tag">TIMER[x] = action</div>
+      <div class="mc-body">Start, stop, or reset up to 20 independent program timers. Timers can span multiple programs — start in one program, stop in another. Useful for cycle time measurement.</div>
+    </div>
+    <div class="misc-card override">
+      <div class="mc-icon">⚡</div>
+      <div class="mc-name">Override</div>
+      <div class="mc-tag">OVERRIDE = x%</div>
+      <div class="mc-body">Sets the speed override as a percentage (0–100%) of the programmed speed. Allows in-program speed adjustment without editing motion instructions individually.</div>
+    </div>
+    <div class="misc-card remark">
+      <div class="mc-icon">💬</div>
+      <div class="mc-name">Remark</div>
+      <div class="mc-tag">! remark text</div>
+      <div class="mc-body">Annotates the program. Remarks do NOT affect execution. 1–32 characters. First character is always an exclamation mark (!). Can be highlighted yellow via EDCMD Color command.</div>
+    </div>
+    <div class="misc-card message">
+      <div class="mc-icon">📢</div>
+      <div class="mc-name">Message</div>
+      <div class="mc-tag">MESSAGE[content]</div>
+      <div class="mc-body">Displays a message on the USER screen when executed. 1–23 characters. The user screen is shown automatically. Leave content empty for a blank separator line between messages.</div>
+    </div>
+  </div>
+
+  <!-- Syntax reference -->
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Timer Instruction Syntax</div>
+      <div class="syntax-box">
+        <span class="sy-kw">TIMER</span>[<span class="sy-var">x</span>] = <span class="sy-op">START</span><span class="sy-dim">   — starts the timer</span><br>
+        <span class="sy-kw">TIMER</span>[<span class="sy-var">x</span>] = <span class="sy-op">STOP</span><span class="sy-dim">    — stops the timer</span><br>
+        <span class="sy-kw">TIMER</span>[<span class="sy-var">x</span>] = <span class="sy-op">RESET</span><span class="sy-dim">   — resets to zero</span><br><br>
+        <span class="sy-dim">x: Direct timer number 1–20</span><br>
+        <span class="sy-dim">   or Indirect R[x] (contents = timer number)</span><br><br>
+        <span class="sy-dim">// Store elapsed time in a register:</span><br>
+        <span class="sy-kw">R</span>[<span class="sy-var">10</span>] = <span class="sy-val">TIMER</span>[<span class="sy-var">1</span>]
+      </div>
+
+      <div class="sub-title">Override Instruction Syntax</div>
+      <div class="syntax-box">
+        <span class="sy-kw">OVERRIDE</span> = <span class="sy-var">x</span> <span class="sy-op">%</span><br><br>
+        <span class="sy-dim">x: Speed percentage 0–100%</span><br><br>
+        <span class="sy-dim">Examples:</span><br>
+        <span class="sy-kw">OVERRIDE</span> = <span class="sy-val">50</span> <span class="sy-op">%</span><span class="sy-dim">  // Half speed</span><br>
+        <span class="sy-kw">OVERRIDE</span> = <span class="sy-val">100</span> <span class="sy-op">%</span><span class="sy-dim"> // Full speed</span>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Remark & Message Syntax</div>
+      <div class="syntax-box">
+        <span class="sy-dim">// Remark instruction (no execution effect):</span><br>
+        <span class="sy-op">!</span><span class="sy-val">remark text</span><br>
+        <span class="sy-dim">  1–32 characters; first char must be !</span><br><br>
+        <span class="sy-dim">// Message instruction (displays on USER screen):</span><br>
+        <span class="sy-kw">MESSAGE</span>[<span class="sy-val">message content</span>]<br>
+        <span class="sy-dim">  1–23 characters</span><br>
+        <span class="sy-dim">  Empty brackets = blank line on screen</span>
+      </div>
+
+      <div class="sub-title">Misc Instructions in a Full Program</div>
+      <div class="prog-builder">
+        <div class="prog-header"><div class="prog-name-display">A_MULT_PICK (excerpt)</div></div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1:</span><span class="pl-kw">UFRAME_NUM=1</span></div>
+          <div class="pl"><span class="pl-num">2:</span><span class="pl-kw">UTOOL_NUM=1</span></div>
+          <div class="pl"><span class="pl-num">3:</span><span class="pl-remark">! Initialize registers and timers</span></div>
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-timer">TIMER[1]=RESET</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span class="pl-timer">TIMER[1]=START</span></div>
+          <div class="pl"><span class="pl-num">6:</span><span class="pl-kw">R[5:Cycle Count]=0</span></div>
+          <div class="pl"><span class="pl-num">7:</span><span class="pl-remark">! Begin pick sequence</span></div>
+          <div class="pl"><span class="pl-num">8:</span><span class="pl-msg">MESSAGE[Picking part 1]</span></div>
+          <div class="pl"><span class="pl-num">…</span><span class="pl-end"></span></div>
+          <div class="pl"><span class="pl-num">32:</span><span class="pl-timer">TIMER[1]=STOP</span></div>
+          <div class="pl"><span class="pl-num">33:</span><span class="pl-kw">R[10:Cycle Time]=TIMER[1]</span></div>
+          <div class="pl"><span class="pl-num">35:</span><span class="pl-motion">J PR[1:HOME] 100% FINE</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LABS -->
+<section class="section" id="labs">
+  <div class="sec-label">Labs 30–31</div>
+  <h2 class="sec-title reveal">Lab Exercises</h2>
+
+  <div class="lab-card reveal">
+    <div class="lab-num">LAB 30</div>
+    <div class="lab-title">Position Register Offsets</div>
+    <div class="lab-body">Modify A_COUNTER into A_OFFSET — a program that offsets its path by +15mm in Z on every cycle, running 5 cycles total.</div>
+    <ol class="lab-steps">
+      <li><strong>Copy A_COUNTER → rename A_OFFSET</strong></li>
+      <li>Modify the program to offset above the current path by a specific distance</li>
+      <li><strong>Assign a PR for offset data</strong> — manually set all 6 elements to zero at the DATA screen (e.g., PR[5])</li>
+      <li>Initialize both registers outside the main loop: <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">PR[5,3]=0</span> and <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">R[1:Cycle Count]=0</span></li>
+      <li><strong>Add Offset,PR[5] to each motion instruction</strong> in the loop</li>
+      <li><strong>Increment Z element</strong> each cycle: <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">PR[5,3]=PR[5,3]+15</span></li>
+      <li>Increment counter and use IF to loop 5 times: <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">IF R[1:Cycle Count]&lt;5, JMP LBL[1]</span></li>
+    </ol>
+    <div class="prog-builder" style="margin-top:1.2rem">
+      <div class="prog-header"><div class="prog-name-display">A_OFFSET</div></div>
+      <div class="prog-body">
+        <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">PR[5,3]=0</span></div>
+        <div class="pl"><span class="pl-num">5:</span><span class="pl-kw">R[1:Cycle Count]=0</span></div>
+        <div class="pl"><span class="pl-num">7:</span><span class="pl-motion">J PR[1:HOME] 50% FINE</span></div>
+        <div class="pl"><span class="pl-num">9:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+        <div class="pl"><span class="pl-num">11:</span><span class="pl-motion">L P[1:Square] 1500mm/sec CNT25</span> <span class="pl-offset">Offset,PR[5]</span></div>
+        <div class="pl"><span class="pl-num">12:</span><span class="pl-motion">L P[2] 1500mm/sec CNT88</span> <span class="pl-offset">Offset,PR[5]</span></div>
+        <div class="pl"><span class="pl-num">13:</span><span class="pl-motion">J P[3] 50% FINE</span> <span class="pl-offset">Offset,PR[5]</span></div>
+        <div class="pl"><span class="pl-num">14:</span><span class="pl-motion">L P[4] 1000mm/sec CNT100</span> <span class="pl-offset">Offset,PR[5]</span></div>
+        <div class="pl"><span class="pl-num">15:</span><span class="pl-motion">L P[1:Square] 1500mm/sec CNT25</span> <span class="pl-offset">Offset,PR[5]</span></div>
+        <div class="pl"><span class="pl-num">17:</span><span class="pl-kw">PR[5,3]=PR[5,3]+15</span></div>
+        <div class="pl"><span class="pl-num">18:</span><span class="pl-kw">R[1:Cycle Count]=R[1:Cycle Count]+1</span></div>
+        <div class="pl"><span class="pl-num">20:</span><span class="pl-kw">IF R[1:Cycle Count]&lt;5, JMP LBL[1]</span></div>
+        <div class="pl"><span class="pl-num">22:</span><span class="pl-motion">J PR[1:HOME] 50% FINE</span></div>
+        <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab-card reveal">
+    <div class="lab-num">LAB 31 — FINAL EXERCISE</div>
+    <div class="lab-title">Applying All Course Concepts</div>
+    <div class="lab-body">A comprehensive final program combining PRs, offsets, macros, timers, group outputs, and conditional branching into a multi-pick program that runs 3 cycles.</div>
+    <ol class="lab-steps">
+      <li><strong>Copy A_PICK_PART → rename A_MULT_PICK</strong></li>
+      <li>Create PR[10] for height offset above pick/place positions (e.g., Z=50mm, all others=0)</li>
+      <li><strong>Replace "Above Pick" local positions with PR[6:Pick Pos]</strong> + Offset,PR[10]</li>
+      <li><strong>Replace "Above Place" local positions with PR[7:Place Pos]</strong> + Offset,PR[10]</li>
+      <li>Determine X offset distance to second pick position (relative to USER Frame)</li>
+      <li>Do the same for the drop position using PR[7]</li>
+      <li>Add <strong>PR[i,j] instructions after each pick/place</strong> to shift position for the next part</li>
+      <li>Replace gripper I/O instructions with <strong>MACRO Command Instructions</strong> (Gripper will Close / Open)</li>
+      <li>Set <strong>PAYLOAD schedules</strong>: "tool w/ part" after pick, "tool only" after place</li>
+      <li>Initialize PR X values at program start using PR[i,j]</li>
+      <li>Add <strong>Data Register counter + IF</strong> to loop exactly 3 cycles</li>
+      <li>Track full cycle time: <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">TIMER[1]=RESET → START → STOP → R[10]=TIMER[1]</span></li>
+      <li><strong>Add Remark instructions</strong> to annotate each program section</li>
+      <li>Use <strong>Group Output</strong> to reflect current part number: <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">GO[1]=R[5]</span></li>
+    </ol>
+    <div class="prog-builder" style="margin-top:1.2rem">
+      <div class="prog-header"><div class="prog-name-display">A_MULT_PICK — TEMPLATE</div></div>
+      <div class="prog-body">
+        <div class="pl"><span class="pl-num">1:</span><span class="pl-kw">UFRAME_NUM=1</span></div>
+        <div class="pl"><span class="pl-num">4:</span><span class="pl-timer">TIMER[1]=RESET</span></div>
+        <div class="pl"><span class="pl-num">5:</span><span class="pl-timer">TIMER[1]=START</span></div>
+        <div class="pl"><span class="pl-num">6:</span><span class="pl-kw">PR[6,1]=(Initial X)</span></div>
+        <div class="pl"><span class="pl-num">7:</span><span class="pl-kw">PR[7,1]=(Initial X)</span></div>
+        <div class="pl"><span class="pl-num">8:</span><span class="pl-kw">R[5:Cycle Count]=0</span></div>
+        <div class="pl"><span class="pl-num">12:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+        <div class="pl"><span class="pl-num">14:</span><span class="pl-motion">J PR[6:Pick Pos] 100% CNT50</span> <span class="pl-offset">Offset,PR[10]</span></div>
+        <div class="pl"><span class="pl-num">15:</span><span class="pl-motion">L PR[6:Pick Pos] 250mm/sec FINE</span></div>
+        <div class="pl"><span class="pl-num">16:</span><span class="pl-io">Gripper will Close</span><span style="color:var(--dim);font-size:.68rem;margin-left:.4rem">// MACRO</span></div>
+        <div class="pl"><span class="pl-num">18:</span><span class="pl-kw">R[5:Cycle Count]=R[5:Cycle Count]+1</span></div>
+        <div class="pl"><span class="pl-num">19:</span><span class="pl-kw">GO[1]=R[5]</span></div>
+        <div class="pl"><span class="pl-num">21:</span><span class="pl-kw">PR[6,1:Pick Pos]=PR[6,1:Pick Pos]+65</span></div>
+        <div class="pl"><span class="pl-num">24:</span><span class="pl-motion">L PR[7:Place Pos] 250mm/sec FINE</span></div>
+        <div class="pl"><span class="pl-num">25:</span><span class="pl-io">Gripper will Open</span><span style="color:var(--dim);font-size:.68rem;margin-left:.4rem">// MACRO</span></div>
+        <div class="pl"><span class="pl-num">29:</span><span class="pl-kw">PR[7,1:Place Pos]=PR[7,1:Place Pos]+65</span></div>
+        <div class="pl"><span class="pl-num">30:</span><span class="pl-kw">IF R[5:Cycle Count]&lt;3, JMP LBL[1]</span></div>
+        <div class="pl"><span class="pl-num">32:</span><span class="pl-timer">TIMER[1]=STOP</span></div>
+        <div class="pl"><span class="pl-num">33:</span><span class="pl-kw">R[10:Cycle Time]=TIMER[1]</span></div>
+        <div class="pl"><span class="pl-num">35:</span><span class="pl-motion">J PR[1:HOME] 100% FINE</span></div>
+        <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">17.6 — Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <div class="quiz-wrap reveal">
+    <div id="qC"></div>
+  </div>
+</section>
+
+<footer style="position:relative;z-index:10;text-align:center;padding:3rem 2rem;border-top:1px solid var(--border)">
+  <div style="font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim)">FANUC AMERICA CORPORATION © 2020 — MATAGHAND0318CE — DO NOT DUPLICATE</div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:rgba(74,106,122,.5);margin-top:.5rem;letter-spacing:.15em">CHAPTER 17: PR OFFSETS AND MISC. — HANDLINGTOOL</div>
+</footer>
+
+<script>
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const s=document.documentElement,b=document.body;
+  const p=(s.scrollTop||b.scrollTop)/(s.scrollHeight-s.clientHeight)*100;
+  document.getElementById('pb').style.width=p+'%';
+});
+
+// Particles
+for(let i=0;i<18;i++){
+  const p=document.createElement('div');
+  p.className='particle';
+  p.style.cssText=`left:${Math.random()*100}%;animation-duration:${6+Math.random()*10}s;animation-delay:${Math.random()*6}s;--drift:${(Math.random()-.5)*120}px`;
+  document.body.appendChild(p);
+}
+
+// Reveal on scroll
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:.12});
+document.querySelectorAll('.reveal,.step').forEach(el=>ro.observe(el));
+
+// Offset calculator
+function calcOffset(){
+  const bx=+document.getElementById('bx').value||0;
+  const by=+document.getElementById('by').value||0;
+  const bz=+document.getElementById('bz').value||0;
+  const ox=+document.getElementById('ox').value||0;
+  const oy=+document.getElementById('oy').value||0;
+  const oz=+document.getElementById('oz').value||0;
+  const axes=[['x',bx,ox],['y',by,oy],['z',bz,oz]];
+  axes.forEach(([a,base,off])=>{
+    document.getElementById('r'+a+'b').textContent=base;
+    document.getElementById('r'+a+'o').textContent=(off>=0?'+ ':'− ')+Math.abs(off);
+    document.getElementById('r'+a+'r').textContent='= '+(base+off);
+    document.getElementById('r'+a).classList.toggle('active',off!==0);
+  });
+  const changed=axes.filter(([a,b,o])=>o!==0).map(([a,b,o])=>a.toUpperCase()+': '+b+' + '+o+' = '+(b+o)).join(', ') || 'No offset applied';
+  document.getElementById('offsetFormula').innerHTML=
+    `<span style="color:var(--dim)">J P[1] 100% CNT50 : </span><span style="color:var(--accent2)">Offset,PR[5]</span><br><span style="color:var(--accent3)">${changed}</span>`;
+}
+calcOffset();
+
+// Quiz
+const Qs=[
+  {
+    q:'In the instruction PR[i, j], what does the "i" represent?',
+    opts:['The Position Register to use','The specific element of the Position Register','The value to increment the Position Register','PR[i, j] is not a valid instruction'],
+    correct:0,
+    explain:'"i" represents the Position Register number (which register to address), while "j" represents the specific element within that register (1=X, 2=Y, 3=Z, 4=W, 5=P, 6=R for Cartesian positions).',
+    wrongExplain:'The element index is represented by "j", not "i". In PR[5,3], "5" is the register number (i) and "3" is the element (j), targeting the Z axis of Position Register 5.'
+  },
+  {
+    q:'The motion option OFFSET, PR[x] is offset relative to the orientation of what frame?',
+    opts:['TOOL','JOG','WORLD','USER'],
+    correct:3,
+    explain:'The OFFSET, PR[x] motion option applies the offset relative to the active USER Frame orientation. If you want the offset relative to the tool instead, use TOOL OFFSET, PR[x].',
+    wrongExplain:'TOOL OFFSET uses the Tool Frame. There is no JOG frame for this purpose. The standard Offset,PR[x] is always relative to the USER (User Frame) orientation.'
+  },
+  {
+    q:'How many Program Timers are available?',
+    opts:['5','10','15','20'],
+    correct:3,
+    explain:'Up to 20 independent program timers are available (TIMER[1] through TIMER[20]). They can be started in one program and stopped in another, making them useful for measuring cycle times across multiple programs.',
+    wrongExplain:'The FANUC controller supports 20 program timers, not 5, 10, or 15. Each can be independently started, stopped, and reset.'
+  },
+  {
+    q:'Which instruction adds a comment to a program without affecting execution?',
+    opts:['MESSAGE[text]','! remark text','OVERRIDE=0%','TIMER[1]=STOP'],
+    correct:1,
+    explain:'The Remark instruction (! remark text) annotates the program with a 1–32 character comment. It has absolutely no effect on program execution and is only for programmer reference.',
+    wrongExplain:'MESSAGE displays text on the USER screen when executed — it does affect program flow by switching screens. Only the Remark instruction (! prefix) is purely non-executing annotation.'
+  },
+  {
+    q:'When using Offset, PR[x], how many elements of the Position Register must be initialized?',
+    opts:['Only the axes you are offsetting','At least 3 (X, Y, Z)','All 6 elements (X, Y, Z, W, P, R)','None — values default to zero automatically'],
+    correct:2,
+    explain:'All six elements of the Position Register must be initialized — none can be left uninitialized (*). Even if you only want to offset in the Z direction, you must set all other elements to 0 explicitly.',
+    wrongExplain:'Leaving any element as * (uninitialized) will cause issues. The controller requires all six elements to have defined values, even if that value is 0 for axes you do not want to offset.'
+  },
+  {
+    q:'To which motion instruction does the Offset, PR[x] option apply?',
+    opts:['All motion instructions in the program','All instructions after the offset line','Only the single motion instruction where it appears','The next three motion instructions'],
+    correct:2,
+    explain:'The offset is applied ONLY to the single motion instruction where the Offset,PR[x] option appears. Every other motion line is unaffected. To offset multiple positions, you must add Offset,PR[x] to each individual motion instruction.',
+    wrongExplain:'The offset does NOT carry over to subsequent lines. You must explicitly add Offset,PR[x] to every motion instruction you want offset — there is no automatic propagation.'
+  },
+  {
+    q:'How many Position Registers are available on an R-30iB PLUS controller without additional options?',
+    opts:['32','100','200','372'],
+    correct:3,
+    explain:'Up to 372 Position Registers are available on an R-30iB PLUS controller. Note that if multiple motion groups are configured, the number per group may be reduced.',
+    wrongExplain:'32 was the older limit for some earlier systems. 372 is the correct count for an R-30iB PLUS. The number per group may be lower if multiple motion groups are configured.'
+  },
+  {
+    q:'What does the OVERRIDE instruction do?',
+    opts:['Resets all timers to zero','Sets the speed override as a percentage of the programmed speed','Overrides the active User Frame','Forces the robot to ignore all I/O signals'],
+    correct:1,
+    explain:'OVERRIDE = x% sets the controller\'s speed override percentage (0–100%) of whatever speed is programmed in the motion instructions. For example, OVERRIDE=50% would run all subsequent motion at half the taught speed.',
+    wrongExplain:'OVERRIDE only affects robot speed. Timers are reset with TIMER[x]=RESET. Frame switching uses UFRAME_NUM or UTOOL_NUM. OVERRIDE has no effect on I/O signals.'
+  }
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{
+    el.classList.add('locked');
+    if(idx===q.correct)el.classList.add('correct');
+    else if(idx===i&&idx!==q.correct)el.classList.add('wrong');
+  });
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent2);text-shadow:var(--glow2);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 17: PR Offsets and MISC.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

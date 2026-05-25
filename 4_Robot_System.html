@@ -1,0 +1,2166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Robot System — Chapter 4</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --surface: #0a1520;
+    --panel: #0d1e2e;
+    --border: #1a3a5c;
+    --accent: #00d4ff;
+    --accent2: #ff6b00;
+    --accent3: #00ff88;
+    --text: #c8dde8;
+    --dim: #4a6a7a;
+    --glow: 0 0 20px rgba(0,212,255,0.4);
+    --glow2: 0 0 20px rgba(255,107,0,0.4);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Animated grid background */
+  .grid-bg {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridMove 20s linear infinite;
+    z-index: 0;
+  }
+
+  @keyframes gridMove {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(60px); }
+  }
+
+  /* Floating particles */
+  .particle {
+    position: fixed;
+    width: 2px; height: 2px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: float linear infinite;
+    opacity: 0;
+    z-index: 1;
+  }
+
+  @keyframes float {
+    0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-10px) translateX(var(--drift)); opacity: 0; }
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    z-index: 10;
+  }
+
+  .hero-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.3s;
+  }
+
+  .hero h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(2.5rem, 8vw, 6rem);
+    font-weight: 900;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #fff;
+    text-shadow: var(--glow), 0 0 60px rgba(0,212,255,0.2);
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.5s;
+  }
+
+  .hero h1 span { color: var(--accent); }
+
+  .hero-sub {
+    font-size: clamp(1rem, 2.5vw, 1.3rem);
+    color: var(--dim);
+    margin-top: 1.2rem;
+    letter-spacing: 0.1em;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.7s;
+  }
+
+  .hero-robot {
+    margin-top: 3rem;
+    width: 220px;
+    height: 220px;
+    position: relative;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.9s;
+  }
+
+  .hero-robot svg { width: 100%; height: 100%; filter: drop-shadow(0 0 20px rgba(0,212,255,0.5)); }
+
+  @keyframes rotateSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+
+  .hero-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 50%;
+    animation: rotateSlow 12s linear infinite;
+  }
+
+  .ring1 { width: 260px; height: 260px; border-style: dashed; animation-duration: 15s; }
+  .ring2 { width: 310px; height: 310px; animation-direction: reverse; animation-duration: 20s; border-color: rgba(255,107,0,0.2); }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 2rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    color: var(--dim);
+    animation: bounce 2s ease infinite;
+  }
+
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2.5rem;
+    background: rgba(5,10,15,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-decoration: none;
+  }
+
+  .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+
+  .nav-links a {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s, text-shadow 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--accent); text-shadow: var(--glow); }
+
+  /* ─── SECTIONS ─── */
+  .section {
+    position: relative;
+    z-index: 10;
+    padding: 5rem 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.5em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--accent), transparent);
+    opacity: 0.4;
+  }
+
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2.5rem;
+    line-height: 1.2;
+  }
+
+  /* ─── REVEAL ANIMATION ─── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ─── OVERVIEW CARDS ─── */
+  .system-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 4rem;
+  }
+
+  .sys-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.3s;
+    cursor: default;
+  }
+
+  .sys-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--accent), transparent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+
+  .sys-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+  .sys-card:hover::before { transform: scaleX(1); }
+
+  .card-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 0 8px rgba(0,212,255,0.5));
+  }
+
+  .card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  .card-body { font-size: 0.9rem; line-height: 1.7; color: var(--dim); }
+
+  /* ─── AXES INTERACTIVE ─── */
+  .axes-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 700px) { .axes-container { grid-template-columns: 1fr; } }
+
+  .axis-diagram {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2rem;
+    position: relative;
+  }
+
+  .axis-visual {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .axis-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .axis-item:hover, .axis-item.active {
+    background: rgba(0,212,255,0.07);
+    border-color: var(--accent);
+  }
+
+  .axis-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 900;
+    min-width: 2.5rem;
+    text-align: center;
+  }
+
+  .major .axis-num { color: var(--accent); text-shadow: var(--glow); }
+  .minor .axis-num { color: var(--accent2); text-shadow: var(--glow2); }
+
+  .axis-label { font-size: 0.95rem; font-weight: 600; color: #fff; }
+  .axis-desc { font-size: 0.8rem; color: var(--dim); }
+
+  .axis-badge {
+    margin-left: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+  }
+
+  .major .axis-badge { background: rgba(0,212,255,0.15); color: var(--accent); }
+  .minor .axis-badge { background: rgba(255,107,0,0.15); color: var(--accent2); }
+
+  .axis-info-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2rem;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .info-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+
+  .info-body { font-size: 0.9rem; line-height: 1.8; color: var(--text); }
+
+  /* ─── ROBOT DIAGRAM SVG ─── */
+  .robot-svg-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .robot-svg-wrap::after {
+    content: 'CLICK AXES TO LEARN MORE';
+    position: absolute;
+    bottom: 0.8rem;
+    right: 1rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+  }
+
+  /* ─── MOTOR ANIMATION ─── */
+  .motor-section {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 700px) { .motor-section { grid-template-columns: 1fr; } }
+
+  .motor-animation {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .motor-visual {
+    position: relative;
+    width: 280px;
+    height: 90px;
+  }
+
+  @keyframes rotor-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes pulse-glow { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+  .specs-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .spec-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.2rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+
+  .spec-item:hover { border-color: var(--accent); transform: translateX(4px); }
+
+  .spec-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 0.35rem;
+    flex-shrink: 0;
+    box-shadow: var(--glow);
+    animation: pulse-glow 2s ease infinite;
+  }
+
+  .spec-dot.orange { background: var(--accent2); box-shadow: var(--glow2); }
+  .spec-dot.green { background: var(--accent3); box-shadow: 0 0 12px rgba(0,255,136,0.5); }
+
+  .spec-text strong { display: block; font-size: 0.9rem; color: #fff; font-weight: 600; margin-bottom: 0.2rem; }
+  .spec-text span { font-size: 0.82rem; color: var(--dim); line-height: 1.6; }
+
+  /* ─── CONTROLLER COMPONENTS ─── */
+  .components-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .comp-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .comp-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0,212,255,0.1);
+  }
+
+  .comp-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2rem;
+    font-weight: 900;
+    color: rgba(0,212,255,0.1);
+    position: absolute;
+    top: 0.5rem; right: 1rem;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .comp-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+  }
+
+  .comp-desc { font-size: 0.85rem; color: var(--dim); line-height: 1.7; }
+
+  /* ─── WARNING BOX ─── */
+  .warning-box {
+    background: rgba(255,50,50,0.08);
+    border: 1px solid rgba(255,50,50,0.4);
+    border-left: 3px solid #ff3232;
+    border-radius: 4px;
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin: 2rem 0;
+    animation: warningPulse 3s ease infinite;
+  }
+
+  @keyframes warningPulse { 0%, 100% { border-left-color: #ff3232; } 50% { border-left-color: #ff8800; } }
+
+  .warning-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+  .warning-text { font-size: 0.85rem; color: #ff8888; line-height: 1.7; }
+  .warning-text strong { color: #ffcccc; font-size: 0.9rem; }
+
+  /* ─── SOP PANEL ─── */
+  .sop-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .sop-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #0a1520;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .sop-btn {
+    padding: 0.6rem 1.1rem;
+    border-radius: 3px;
+    border: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sop-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.1);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .sop-btn:hover::after { opacity: 1; }
+
+  .btn-blue { background: #003c6e; color: var(--accent); border: 1px solid #005a9e; }
+  .btn-green { background: #003d1a; color: var(--accent3); border: 1px solid #007a35; }
+  .btn-red-led { background: rgba(255,50,50,0.2); color: #ff5555; border: 1px solid rgba(255,50,50,0.5); }
+  .btn-white { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+  .btn-emergency {
+    background: #8b0000;
+    color: #ffcccc;
+    border: 2px solid #cc0000;
+    font-weight: bold;
+    border-radius: 50px;
+    padding: 0.8rem 1.4rem;
+    animation: emergencyPulse 2s ease infinite;
+  }
+
+  @keyframes emergencyPulse { 0%, 100% { box-shadow: 0 0 5px rgba(204,0,0,0.5); } 50% { box-shadow: 0 0 20px rgba(204,0,0,0.8); } }
+
+  .sop-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .sop-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sop-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(26,58,92,0.5);
+    color: var(--text);
+    vertical-align: top;
+    transition: background 0.2s;
+  }
+
+  .sop-table tr:hover td { background: rgba(0,212,255,0.04); }
+
+  .sop-table td:first-child { color: #fff; font-weight: 600; }
+
+  /* ─── MODES TABS ─── */
+  .modes-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mode-tab {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    padding: 0.8rem 1.5rem;
+    background: none;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+    top: 1px;
+  }
+
+  .mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .mode-tab:hover:not(.active) { color: var(--text); }
+
+  .mode-content {
+    display: none;
+    padding: 2rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .mode-content.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.2rem;
+  }
+
+  .mode-prop {
+    padding: 1rem;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+
+  .mode-prop-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+  }
+
+  .mode-prop-val { font-size: 0.85rem; color: var(--text); line-height: 1.6; }
+
+  .speed-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+  }
+
+  .speed-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: var(--glow);
+    transition: width 0.8s ease;
+  }
+
+  /* ─── STARTUP STEPS ─── */
+  .steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  .steps-list::before {
+    content: '';
+    position: absolute;
+    left: 1.5rem;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+  }
+
+  .step-item {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.2rem 0 1.2rem 0.5rem;
+    position: relative;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.5s ease;
+  }
+
+  .step-item.visible { opacity: 1; transform: translateX(0); }
+
+  .step-num {
+    width: 2rem; height: 2rem;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+    box-shadow: var(--glow);
+    z-index: 1;
+  }
+
+  .step-content strong { display: block; color: #fff; font-size: 0.95rem; margin-bottom: 0.3rem; }
+  .step-content p { color: var(--dim); font-size: 0.85rem; line-height: 1.6; }
+
+  /* ─── QUIZ SECTION ─── */
+  .quiz-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2.5rem;
+  }
+
+  .quiz-q {
+    font-size: 1.05rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+    font-weight: 600;
+  }
+
+  .quiz-options { display: flex; flex-direction: column; gap: 0.7rem; }
+
+  .quiz-opt {
+    padding: 0.9rem 1.2rem;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .quiz-opt:hover:not(.answered) { border-color: var(--accent); color: #fff; background: rgba(0,212,255,0.05); }
+  .quiz-opt.correct { border-color: var(--accent3); background: rgba(0,255,136,0.1); color: var(--accent3); }
+  .quiz-opt.wrong { border-color: #ff4444; background: rgba(255,68,68,0.1); color: #ff8888; }
+
+  .opt-letter {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    width: 1.4rem; height: 1.4rem;
+    border-radius: 2px;
+    background: rgba(0,212,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .quiz-feedback {
+    margin-top: 1rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    padding: 0.8rem 1rem;
+    border-radius: 3px;
+    display: none;
+  }
+
+  .quiz-feedback.show { display: block; animation: fadeIn 0.3s ease; }
+  .quiz-feedback.good { background: rgba(0,255,136,0.1); color: var(--accent3); border: 1px solid rgba(0,255,136,0.3); }
+  .quiz-feedback.bad { background: rgba(255,68,68,0.1); color: #ff8888; border: 1px solid rgba(255,68,68,0.3); }
+
+  /* ─── MOTION GROUPS ─── */
+  .motion-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s;
+  }
+
+  .stat-card:hover { transform: scale(1.03); }
+
+  .stat-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-label { font-size: 0.78rem; color: var(--dim); letter-spacing: 0.05em; line-height: 1.4; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    position: relative;
+    z-index: 10;
+    padding: 3rem 2rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .footer-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.3em;
+    margin-bottom: 1rem;
+  }
+
+  footer p {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--accent), var(--accent2));
+    z-index: 9999;
+    transition: width 0.1s ease;
+    box-shadow: var(--glow);
+  }
+
+  /* ─── MOBILE ─── */
+  @media (max-width: 600px) {
+    nav { padding: 0.8rem 1rem; }
+    .nav-links { display: none; }
+    .section { padding: 3rem 1rem; }
+    .sop-buttons { flex-direction: column; align-items: flex-start; }
+  }
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Particles -->
+<div id="particles"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#hero" class="nav-logo">FANUC // CH.04</a>
+  <ul class="nav-links">
+    <li><a href="#mechanical">Mechanical</a></li>
+    <li><a href="#controller">Controller</a></li>
+    <li><a href="#sop">Operator Panel</a></li>
+    <li><a href="#modes">Modes</a></li>
+    <li><a href="#startup">Startup</a></li>
+    <li><a href="#quiz">Review</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+
+  <div class="hero-label">HandlingTool Training Module</div>
+  <h1>Robot <span>System</span></h1>
+  <p class="hero-sub">Chapter 4 — R-30iB / R-30iB Plus Controller</p>
+
+  <!-- Animated Robot SVG -->
+  <div class="hero-robot">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Base -->
+      <rect x="60" y="165" width="80" height="20" rx="4" fill="#0a1520" stroke="#00d4ff" stroke-width="1"/>
+      <!-- Body -->
+      <rect x="75" y="110" width="50" height="60" rx="4" fill="#0d1e2e" stroke="#00d4ff" stroke-width="1.5"/>
+      <!-- Shoulder -->
+      <circle cx="100" cy="115" r="14" fill="#091828" stroke="#00d4ff" stroke-width="1.5"/>
+      <!-- Upper arm -->
+      <g style="transform-origin:100px 115px; animation: arm1 4s ease-in-out infinite;">
+        <rect x="88" y="70" width="24" height="50" rx="5" fill="#0d1e2e" stroke="#1a3a5c" stroke-width="1"/>
+        <!-- Elbow joint -->
+        <circle cx="100" cy="72" r="10" fill="#091828" stroke="#00d4ff" stroke-width="1.5"/>
+        <!-- Forearm -->
+        <g style="transform-origin:100px 72px; animation: arm2 4s ease-in-out infinite;">
+          <rect x="91" y="30" width="18" height="46" rx="4" fill="#0d1e2e" stroke="#1a3a5c" stroke-width="1"/>
+          <!-- Wrist -->
+          <circle cx="100" cy="32" r="8" fill="#091828" stroke="#ff6b00" stroke-width="1.5"/>
+          <!-- Tool head -->
+          <rect x="88" y="14" width="24" height="20" rx="3" fill="#091828" stroke="#ff6b00" stroke-width="1"/>
+          <circle cx="100" cy="20" r="4" fill="#ff6b00" opacity="0.8"/>
+        </g>
+      </g>
+      <!-- Glow dots -->
+      <circle cx="100" cy="115" r="3" fill="#00d4ff" opacity="0.9">
+        <animate attributeName="opacity" values="0.9;0.3;0.9" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="100" cy="72" r="3" fill="#00d4ff" opacity="0.7">
+        <animate attributeName="opacity" values="0.7;0.2;0.7" dur="2.5s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="100" cy="32" r="3" fill="#ff6b00" opacity="0.9">
+        <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.8s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+  </div>
+
+  <div class="scroll-hint">▼ SCROLL TO BEGIN</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section reveal" id="overview">
+  <div class="section-label">4.2 — System Overview</div>
+  <h2 class="section-title">Three Core Components</h2>
+  <div class="system-overview">
+    <div class="sys-card reveal">
+      <div class="card-icon">🦾</div>
+      <div class="card-title">Mechanical Unit</div>
+      <div class="card-body">The robot body — a series of mechanical links driven by servo motors. Each junction is a joint (axis) that enables precise motion across 6 degrees of freedom.</div>
+    </div>
+    <div class="sys-card reveal">
+      <div class="card-icon">🖥️</div>
+      <div class="card-title">Controller</div>
+      <div class="card-body">Houses power supply, control circuitry, and memory. Available in A-Size, B-Size, and Mate styles. Directs operation, motion, and external communication.</div>
+    </div>
+    <div class="sys-card reveal">
+      <div class="card-icon">💾</div>
+      <div class="card-title">FANUC Software</div>
+      <div class="card-body">HandlingTool application software defines robot function, contains diagnostics, and communication protocols. Two versions: LR HandlingTool and HandlingTool.</div>
+    </div>
+  </div>
+</section>
+
+<!-- MECHANICAL UNIT -->
+<section class="section" id="mechanical">
+  <div class="section-label">4.3 — Mechanical Unit</div>
+  <h2 class="section-title reveal">Major &amp; Minor Axes</h2>
+
+  <div class="axes-container">
+    <div class="axis-diagram reveal">
+      <div class="axis-visual">
+        <!-- Major axes -->
+        <div class="axis-item major" onclick="showAxisInfo(1)" id="axis-1">
+          <div class="axis-num">J1</div>
+          <div>
+            <div class="axis-label">Axis 1 — Rotation</div>
+            <div class="axis-desc">Base rotation, side-to-side</div>
+          </div>
+          <div class="axis-badge">MAJOR</div>
+        </div>
+        <div class="axis-item major" onclick="showAxisInfo(2)" id="axis-2">
+          <div class="axis-num">J2</div>
+          <div>
+            <div class="axis-label">Axis 2 — Lower Arm</div>
+            <div class="axis-desc">Forward/backward swing</div>
+          </div>
+          <div class="axis-badge">MAJOR</div>
+        </div>
+        <div class="axis-item major" onclick="showAxisInfo(3)" id="axis-3">
+          <div class="axis-num">J3</div>
+          <div>
+            <div class="axis-label">Axis 3 — Upper Arm</div>
+            <div class="axis-desc">Vertical reach motion</div>
+          </div>
+          <div class="axis-badge">MAJOR</div>
+        </div>
+        <!-- Minor axes -->
+        <div class="axis-item minor" onclick="showAxisInfo(4)" id="axis-4">
+          <div class="axis-num">J4</div>
+          <div>
+            <div class="axis-label">Axis 4 — Wrist Roll</div>
+            <div class="axis-desc">Rotational twisting</div>
+          </div>
+          <div class="axis-badge">MINOR</div>
+        </div>
+        <div class="axis-item minor" onclick="showAxisInfo(5)" id="axis-5">
+          <div class="axis-num">J5</div>
+          <div>
+            <div class="axis-label">Axis 5 — Wrist Pitch</div>
+            <div class="axis-desc">Up-and-down wrist</div>
+          </div>
+          <div class="axis-badge">MINOR</div>
+        </div>
+        <div class="axis-item minor" onclick="showAxisInfo(6)" id="axis-6">
+          <div class="axis-num">J6</div>
+          <div>
+            <div class="axis-label">Axis 6 — Wrist Yaw</div>
+            <div class="axis-desc">End effector rotation</div>
+          </div>
+          <div class="axis-badge">MINOR</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="axis-info-panel reveal" id="axisInfoPanel">
+      <div class="info-title" id="infoTitle">SELECT AN AXIS</div>
+      <div class="info-body" id="infoBody">Click any axis on the left to learn about its role in the robot's kinematic chain. The first three axes position the robot in space; the last three orient the end effector.</div>
+
+      <div style="margin-top:1.5rem;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:3px;padding:1rem;text-align:center;">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--dim);letter-spacing:0.15em;margin-bottom:0.6rem;">MECHANICAL UNIT — AXIS DIAGRAM</p>
+        <canvas id="robotArmCanvas" width="260" height="270" style="display:block;margin:0 auto;max-width:100%;"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MOTORS -->
+<section class="section" id="motors">
+  <div class="section-label">4.3.1–4.3.3 — Drive System</div>
+  <h2 class="section-title reveal">Motors, Brakes &amp; Encoders</h2>
+
+  <div class="motor-section">
+    <div class="motor-animation reveal">
+      <canvas id="motorCanvas" width="300" height="160" style="display:block;max-width:100%;"></canvas>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--dim);margin-top:0.8rem;text-align:center;letter-spacing:0.1em;">FANUC AC SERVO MOTOR — LIVE SIMULATION</p>
+
+      <!-- PWM waveform strip -->
+      <div style="margin-top:0.8rem;width:100%;max-width:300px;">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:#00d4ff;letter-spacing:0.15em;margin-bottom:4px;opacity:0.7;">PWM SIGNAL</div>
+        <canvas id="pwmCanvas" width="300" height="30" style="display:block;max-width:100%;border:1px solid #1a3a5c;border-radius:2px;background:#060e18;"></canvas>
+      </div>
+    </div>
+
+    <ul class="specs-list reveal">
+      <li class="spec-item">
+        <div class="spec-dot"></div>
+        <div class="spec-text">
+          <strong>FANUC AC Servo Motor</strong>
+          <span>Each axis driven by a permanent magnet rotor motor. PWM signal delivered by the servo amplifier controls speed and torque precisely.</span>
+        </div>
+      </li>
+      <li class="spec-item">
+        <div class="spec-dot orange"></div>
+        <div class="spec-text">
+          <strong>Electromagnetic Brake (90VDC)</strong>
+          <span>Applied mechanically (power OFF) — spring force locks the shaft. Released electrically (power ON) — armature pulled by electromagnet. Brake failure is usually from lack of current, not mechanical failure.</span>
+        </div>
+      </li>
+      <li class="spec-item">
+        <div class="spec-dot green"></div>
+        <div class="spec-text">
+          <strong>Serial Pulse Coder (SPC)</strong>
+          <span>FANUC proprietary optical encoder on each motor. Tracks position and speed via serial data packets. Pulse counts stored in memory and at the SPC, backed by batteries at robot base.</span>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Brake diagram -->
+  <div class="reveal" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;margin-top:2rem;">
+    <p style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--dim);letter-spacing:0.15em;margin-bottom:1rem;text-align:center;">SERVO MOTOR BRAKE — CROSS SECTION DIAGRAM</p>
+    <svg viewBox="0 0 520 190" width="100%" style="max-width:520px;display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- POWER OFF side (left) -->
+      <text x="130" y="16" fill="#ff6b00" font-size="11" font-family="Share Tech Mono" text-anchor="middle" font-weight="bold">POWER OFF — Applied</text>
+
+      <!-- Shaft -->
+      <rect x="70" y="82" width="120" height="14" rx="2" fill="#1a3a5c"/>
+      <!-- Hub -->
+      <rect x="118" y="70" width="28" height="38" rx="2" fill="#0d1e2e" stroke="#1a3a5c" stroke-width="1.5"/>
+      <!-- Friction plate -->
+      <rect x="102" y="74" width="12" height="30" rx="1" fill="#4a6a7a" stroke="#00d4ff" stroke-width="1"/>
+      <text x="96" y="115" fill="#00d4ff" font-size="7" font-family="Share Tech Mono" text-anchor="middle">FRICTION</text>
+      <text x="96" y="123" fill="#00d4ff" font-size="7" font-family="Share Tech Mono" text-anchor="middle">PLATE</text>
+      <!-- End plate (right wall) -->
+      <rect x="150" y="65" width="10" height="48" rx="1" fill="#0d1e2e" stroke="#ff6b00" stroke-width="1.5"/>
+      <text x="166" y="92" fill="#ff6b00" font-size="7" font-family="Share Tech Mono">END</text>
+      <text x="166" y="101" fill="#ff6b00" font-size="7" font-family="Share Tech Mono">PLATE</text>
+      <!-- Armature (pressed tight — power off) -->
+      <rect x="76" y="65" width="10" height="48" rx="1" fill="#0d1e2e" stroke="#ff6b00" stroke-width="1.5"/>
+      <text x="60" y="88" fill="#ff6b00" font-size="7" font-family="Share Tech Mono" text-anchor="middle">ARM-</text>
+      <text x="60" y="97" fill="#ff6b00" font-size="7" font-family="Share Tech Mono" text-anchor="middle">ATURE</text>
+      <!-- Spring (compressed, pushing armature) -->
+      <line x1="68" y1="82" x2="76" y2="82" stroke="#ff6b00" stroke-width="2"/>
+      <line x1="68" y1="96" x2="76" y2="96" stroke="#ff6b00" stroke-width="2"/>
+      <!-- Spring coil lines -->
+      <path d="M 55,82 Q 59,78 63,82 Q 67,86 71,82" fill="none" stroke="#ff8c00" stroke-width="1.5"/>
+      <path d="M 55,90 Q 59,86 63,90 Q 67,94 71,90" fill="none" stroke="#ff8c00" stroke-width="1.5"/>
+      <path d="M 55,98 Q 59,94 63,98 Q 67,102 71,98" fill="none" stroke="#ff8c00" stroke-width="1.5"/>
+      <text x="45" y="92" fill="#ff8c00" font-size="7" font-family="Share Tech Mono" text-anchor="middle">SPRING</text>
+      <!-- Coil / Core -->
+      <rect x="76" y="130" width="84" height="18" rx="2" fill="#091828" stroke="#4a6a7a" stroke-width="1"/>
+      <text x="118" y="143" fill="#4a6a7a" font-size="7" font-family="Share Tech Mono" text-anchor="middle">COIL (DE-ENERGIZED)</text>
+
+      <!-- Arrow showing friction plate locked -->
+      <line x1="110" y1="155" x2="110" y2="108" stroke="#ff6b00" stroke-width="1.5" marker-end="url(#arrowOrange)"/>
+      <text x="110" y="168" fill="#ff6b00" font-size="7.5" font-family="Share Tech Mono" text-anchor="middle">SHAFT LOCKED</text>
+
+      <!-- POWER ON side (right) -->
+      <text x="390" y="16" fill="#00ff88" font-size="11" font-family="Share Tech Mono" text-anchor="middle" font-weight="bold">POWER ON — Released</text>
+
+      <!-- Shaft -->
+      <rect x="330" y="82" width="120" height="14" rx="2" fill="#1a3a5c"/>
+      <!-- Hub -->
+      <rect x="378" y="70" width="28" height="38" rx="2" fill="#0d1e2e" stroke="#1a3a5c" stroke-width="1.5"/>
+      <!-- Friction plate (free) -->
+      <rect x="362" y="74" width="12" height="30" rx="1" fill="#4a6a7a" stroke="#00d4ff" stroke-width="0.8" opacity="0.5"/>
+      <!-- End plate -->
+      <rect x="410" y="65" width="10" height="48" rx="1" fill="#0d1e2e" stroke="#00ff88" stroke-width="1.5"/>
+      <text x="426" y="92" fill="#00ff88" font-size="7" font-family="Share Tech Mono">END</text>
+      <text x="426" y="101" fill="#00ff88" font-size="7" font-family="Share Tech Mono">PLATE</text>
+      <!-- Armature — pulled to core (gap visible) -->
+      <rect x="325" y="65" width="10" height="48" rx="1" fill="#00ff88" stroke="#00ff88" stroke-width="1.5" opacity="0.8"/>
+      <text x="313" y="88" fill="#00ff88" font-size="7" font-family="Share Tech Mono" text-anchor="middle">ARM-</text>
+      <text x="313" y="97" fill="#00ff88" font-size="7" font-family="Share Tech Mono" text-anchor="middle">ATURE</text>
+      <!-- Gap between armature and friction plate -->
+      <rect x="336" y="74" width="26" height="30" rx="0" fill="rgba(0,255,136,0.05)" stroke="rgba(0,255,136,0.3)" stroke-width="0.5" stroke-dasharray="3,2"/>
+      <text x="349" y="93" fill="rgba(0,255,136,0.6)" font-size="6.5" font-family="Share Tech Mono" text-anchor="middle">GAP</text>
+      <!-- Electromagnet core (energized) -->
+      <rect x="336" y="130" width="84" height="18" rx="2" fill="#091828" stroke="#00ff88" stroke-width="1.5"/>
+      <text x="378" y="143" fill="#00ff88" font-size="7" font-family="Share Tech Mono" text-anchor="middle">COIL (ENERGIZED 90VDC)</text>
+      <!-- Magnetic field lines -->
+      <path d="M 340 128 Q 330 110 336 100" fill="none" stroke="#00ff88" stroke-width="1" stroke-dasharray="2,2" opacity="0.5"/>
+      <path d="M 416 128 Q 426 110 420 100" fill="none" stroke="#00ff88" stroke-width="1" stroke-dasharray="2,2" opacity="0.5"/>
+
+      <!-- Rotation arrow showing shaft free -->
+      <path d="M 368 158 A 12 12 0 0 1 392 158" fill="none" stroke="#00ff88" stroke-width="1.5"/>
+      <polygon points="392,158 388,153 395,153" fill="#00ff88"/>
+      <text x="378" y="175" fill="#00ff88" font-size="7.5" font-family="Share Tech Mono" text-anchor="middle">SHAFT FREE TO ROTATE</text>
+
+      <!-- Divider -->
+      <line x1="260" y1="10" x2="260" y2="180" stroke="#1a3a5c" stroke-width="1" stroke-dasharray="4,3"/>
+
+      <!-- Arrow markers -->
+      <defs>
+        <marker id="arrowOrange" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M 0 0 L 6 3 L 0 6 z" fill="#ff6b00"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="warning-box reveal">
+    <div class="warning-icon">⚠️</div>
+    <div class="warning-text"><strong>WARNING:</strong> DO NOT perform motor maintenance without proper training. Internal brake components are factory-sealed — the brake cannot be replaced as a separate unit.</div>
+  </div>
+</section>
+
+<!-- CONTROLLER -->
+<section class="section" id="controller">
+  <div class="section-label">4.4 — Controller</div>
+  <h2 class="section-title reveal">Controller Components</h2>
+
+  <div class="components-grid reveal">
+    <div class="comp-card">
+      <div class="comp-num">01</div>
+      <div class="comp-name">Circuit Breaker</div>
+      <div class="comp-desc">Protects equipment from electrical faults and abnormal input power causing high current. Always present on the input side.</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-num">02</div>
+      <div class="comp-name">E-Stop Unit</div>
+      <div class="comp-desc">Controls the emergency stop system. Manages safety-relevant signal interfaces and external on/off signals.</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-num">03</div>
+      <div class="comp-name">Power Supply Unit</div>
+      <div class="comp-desc">Converts AC input power to various DC voltage levels required by controller components and motors.</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-num">04</div>
+      <div class="comp-name">Main Board</div>
+      <div class="comp-desc">Contains microprocessor, peripheral circuits, memory, and operator panel control circuit. Main CPU controls servo positioning.</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-num">05</div>
+      <div class="comp-name">6-Axis Servo Amplifier</div>
+      <div class="comp-desc">Controls servomotor drive, Pulsecoder signals, brake control, EE Connector, overtravel limits, and hand broken detection.</div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-num">AUX</div>
+      <div class="comp-name">Auxiliary Control Panel</div>
+      <div class="comp-desc">Optional panel housing extra hardware — such as additional servo amplifiers for extended axes or additional motion groups.</div>
+    </div>
+  </div>
+
+  <div class="warning-box reveal">
+    <div class="warning-icon">⚡</div>
+    <div class="warning-text"><strong>DANGER:</strong> Lethal voltage is ALWAYS present at the input side of the circuit breaker whenever the controller is connected to a power source. DO NOT perform controller maintenance without proper training.</div>
+  </div>
+
+  <!-- Motion Groups -->
+  <h3 class="section-title reveal" style="font-size:1.5rem;margin-top:4rem;">Motion Groups</h3>
+  <div class="motion-stats reveal">
+    <div class="stat-card"><div class="stat-num">8</div><div class="stat-label">Max Motion Groups</div></div>
+    <div class="stat-card"><div class="stat-num">72</div><div class="stat-label">Max Total Axes</div></div>
+    <div class="stat-card"><div class="stat-num">9</div><div class="stat-label">Max Axes / Robot Group</div></div>
+    <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">Max Full Kinematic Units</div></div>
+    <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">Max Extended Axes / Group</div></div>
+    <div class="stat-card"><div class="stat-num">2</div><div class="stat-label">Coordinated Interpolation Groups</div></div>
+  </div>
+
+  <ul class="specs-list reveal">
+    <li class="spec-item">
+      <div class="spec-dot"></div>
+      <div class="spec-text">
+        <strong>What is a Motion Group?</strong>
+        <span>A group of axes working together — analogous to how shoulder, elbow, wrist, and fingers all cooperate to move a human arm as one coordinated unit.</span>
+      </div>
+    </li>
+    <li class="spec-item">
+      <div class="spec-dot orange"></div>
+      <div class="spec-text">
+        <strong>Extended Axes</strong>
+        <span>Axes beyond the standard robot axes — used for rotary axes, sliding rails, line tracking, or opening devices. Adds E1, E2, E3 position fields. Cannot be used independently of their motion group.</span>
+      </div>
+    </li>
+  </ul>
+</section>
+
+<!-- SOP -->
+<section class="section" id="sop">
+  <div class="section-label">4.5 — Standard Operator Panel</div>
+  <h2 class="section-title reveal">Operator Controls</h2>
+
+  <div class="sop-panel reveal">
+    <p style="font-family:'Share Tech Mono',monospace;font-size:0.7rem;color:var(--dim);margin-bottom:1rem;letter-spacing:0.1em;">INTERACTIVE SOP — CLICK CONTROLS BELOW</p>
+    <div class="sop-buttons" id="sopPanel">
+      <button class="sop-btn btn-blue" onclick="sopClick('fault-reset')">FAULT RESET</button>
+      <button class="sop-btn btn-green" onclick="sopClick('cycle-start')">CYCLE START</button>
+      <button class="sop-btn btn-red-led" onclick="sopClick('fault-led')">● FAULT LED</button>
+      <button class="sop-btn btn-white" onclick="sopClick('power-led')">◎ POWER LED</button>
+      <button class="sop-btn" style="background:#1a1a1a;color:var(--dim);border:1px solid #333;" onclick="sopClick('mode')">MODE SWITCH</button>
+      <button class="sop-btn" style="background:#1a1a1a;color:var(--dim);border:1px solid #333;" onclick="sopClick('hour')">HOUR METER</button>
+      <button class="sop-btn btn-emergency" onclick="sopClick('estop')">E-STOP</button>
+    </div>
+    <div id="sopInfo" style="padding:1rem 0;font-size:0.9rem;color:var(--text);min-height:3rem;border-left:2px solid var(--accent);padding-left:1rem;margin-bottom:1.5rem;transition:all 0.3s;display:none;"></div>
+
+    <table class="sop-table">
+      <thead>
+        <tr>
+          <th>CONTROL</th>
+          <th>FUNCTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Emergency Stop</td><td>Applies robot brakes and removes power from all motors immediately.</td></tr>
+        <tr><td>Mode Switch</td><td>Selects operation mode: AUTO, T1, or T2. Pauses robot when switched.</td></tr>
+        <tr><td>Fault Reset</td><td>Clears fault messages from the iPendant screen after the fault is corrected.</td></tr>
+        <tr><td>Cycle Start</td><td>Starts programs in AUTO mode. LED illuminated indicates a program is running.</td></tr>
+        <tr><td>Fault Indicator</td><td>Red LED indicating a fault condition has occurred in the system.</td></tr>
+        <tr><td>Power Indicator</td><td>White LED indicating the controller is powered on and operational.</td></tr>
+        <tr><td>Hour Meter</td><td>Tracks cumulative servo ON time for maintenance scheduling.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- SOP Panel SVG Diagram -->
+    <div style="margin-top:1.5rem;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:3px;padding:1.2rem;text-align:center;">
+      <p style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--dim);letter-spacing:0.15em;margin-bottom:1rem;">STANDARD OPERATOR PANEL — COMPONENT DIAGRAM</p>
+      <svg viewBox="0 0 560 160" width="100%" style="max-width:560px;display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg">
+        <!-- Panel body -->
+        <rect x="10" y="20" width="390" height="120" rx="6" fill="#0a1520" stroke="#1a3a5c" stroke-width="2"/>
+        <!-- Inner panel face -->
+        <rect x="18" y="28" width="374" height="104" rx="4" fill="#091828" stroke="#1a3a5c" stroke-width="1"/>
+
+        <!-- Mode switch (key switch) -->
+        <circle cx="65" cy="80" r="24" fill="#0d1e2e" stroke="#4a6a7a" stroke-width="2"/>
+        <circle cx="65" cy="80" r="16" fill="#091828" stroke="#1a3a5c" stroke-width="1"/>
+        <!-- Key indicator -->
+        <rect x="62" y="68" width="6" height="14" rx="2" fill="#c8a000"/>
+        <rect x="60" y="76" width="10" height="6" rx="1" fill="#c8a000"/>
+        <!-- Mode labels -->
+        <text x="37" y="77" fill="#4a6a7a" font-size="6.5" font-family="Share Tech Mono">AUTO</text>
+        <text x="77" y="100" fill="#4a6a7a" font-size="6.5" font-family="Share Tech Mono">T1</text>
+        <text x="37" y="100" fill="#4a6a7a" font-size="6.5" font-family="Share Tech Mono">T2</text>
+
+        <!-- Fault Reset button (blue) -->
+        <rect x="115" y="62" width="40" height="22" rx="3" fill="#003c6e" stroke="#005a9e" stroke-width="1.5"/>
+        <text x="135" y="76" fill="#00d4ff" font-size="7" font-family="Share Tech Mono" text-anchor="middle">FAULT</text>
+        <text x="135" y="84" fill="#00d4ff" font-size="7" font-family="Share Tech Mono" text-anchor="middle">RESET</text>
+
+        <!-- Cycle Start button (green) -->
+        <rect x="168" y="62" width="40" height="22" rx="3" fill="#003d1a" stroke="#007a35" stroke-width="1.5"/>
+        <text x="188" y="76" fill="#00ff88" font-size="7" font-family="Share Tech Mono" text-anchor="middle">CYCLE</text>
+        <text x="188" y="84" fill="#00ff88" font-size="7" font-family="Share Tech Mono" text-anchor="middle">START</text>
+        <!-- Green LED in button -->
+        <circle cx="188" cy="60" r="4" fill="#003d1a" stroke="#00aa44" stroke-width="1"/>
+        <circle cx="188" cy="60" r="2.5" fill="#00ff88" opacity="0.8"/>
+
+        <!-- FAULT LED (red circle) -->
+        <circle cx="232" cy="56" r="10" fill="#1a0000" stroke="#ff3232" stroke-width="1.5"/>
+        <circle cx="232" cy="56" r="6" fill="#cc0000" opacity="0.7"/>
+        <text x="232" y="75" fill="#ff5555" font-size="6.5" font-family="Share Tech Mono" text-anchor="middle">FAULT</text>
+
+        <!-- POWER LED (white circle) -->
+        <circle cx="270" cy="56" r="10" fill="#1a1a1a" stroke="#aaaaaa" stroke-width="1.5"/>
+        <circle cx="270" cy="56" r="6" fill="#cccccc" opacity="0.8"/>
+        <text x="270" y="75" fill="#aaaaaa" font-size="6.5" font-family="Share Tech Mono" text-anchor="middle">POWER</text>
+
+        <!-- Hour meter (small display) -->
+        <rect x="295" y="62" width="50" height="22" rx="2" fill="#060e18" stroke="#1a3a5c" stroke-width="1"/>
+        <text x="320" y="71" fill="#00d4ff" font-size="6" font-family="Share Tech Mono" text-anchor="middle">0 0 1 2 3</text>
+        <text x="320" y="82" fill="#4a6a7a" font-size="5.5" font-family="Share Tech Mono" text-anchor="middle">HOUR METER</text>
+
+        <!-- E-Stop button (large red) -->
+        <circle cx="365" cy="80" r="28" fill="#3d0000" stroke="#cc0000" stroke-width="2"/>
+        <circle cx="365" cy="80" r="20" fill="#8b0000" stroke="#ff3232" stroke-width="1.5"/>
+        <circle cx="365" cy="80" r="14" fill="#cc0000"/>
+        <!-- E-stop pulse ring -->
+        <circle cx="365" cy="80" r="26" fill="none" stroke="#ff3232" stroke-width="1" opacity="0.4" stroke-dasharray="3,3"/>
+
+        <!-- Labels with callout lines -->
+        <!-- Mode switch -->
+        <line x1="65" y1="110" x2="65" y2="148" stroke="#4a6a7a" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="65" y="157" fill="#4a6a7a" font-size="7" font-family="Share Tech Mono" text-anchor="middle">MODE</text>
+
+        <!-- Fault Reset -->
+        <line x1="135" y1="92" x2="135" y2="148" stroke="#00d4ff" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="135" y="157" fill="#00d4ff" font-size="7" font-family="Share Tech Mono" text-anchor="middle">FAULT RST</text>
+
+        <!-- Cycle Start -->
+        <line x1="188" y1="92" x2="188" y2="148" stroke="#00ff88" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="188" y="157" fill="#00ff88" font-size="7" font-family="Share Tech Mono" text-anchor="middle">CYCLE START</text>
+
+        <!-- FAULT LED -->
+        <line x1="232" y1="70" x2="232" y2="148" stroke="#ff5555" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="232" y="157" fill="#ff5555" font-size="7" font-family="Share Tech Mono" text-anchor="middle">FAULT LED</text>
+
+        <!-- POWER LED -->
+        <line x1="270" y1="70" x2="270" y2="148" stroke="#aaaaaa" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="270" y="157" fill="#aaaaaa" font-size="7" font-family="Share Tech Mono" text-anchor="middle">POWER LED</text>
+
+        <!-- Hour meter -->
+        <line x1="320" y1="92" x2="320" y2="148" stroke="#4a6a7a" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="320" y="157" fill="#4a6a7a" font-size="7" font-family="Share Tech Mono" text-anchor="middle">HOUR METER</text>
+
+        <!-- E-stop -->
+        <line x1="365" y1="112" x2="440" y2="148" stroke="#ff3232" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="455" y="152" fill="#ff3232" font-size="7" font-family="Share Tech Mono">EMERGENCY</text>
+        <text x="455" y="162" fill="#ff3232" font-size="7" font-family="Share Tech Mono">STOP</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- MODES -->
+<section class="section" id="modes">
+  <div class="section-label">4.5.1 — Mode Select Switch</div>
+  <h2 class="section-title reveal">Operation Modes</h2>
+
+  <div class="reveal">
+    <div class="modes-tabs">
+      <button class="mode-tab active" onclick="switchMode('t1', this)">T1 MODE</button>
+      <button class="mode-tab" onclick="switchMode('t2', this)">T2 MODE</button>
+      <button class="mode-tab" onclick="switchMode('auto', this)">AUTO MODE</button>
+    </div>
+
+    <div class="mode-content active" id="mode-t1">
+      <p style="color:var(--text);font-size:0.9rem;line-height:1.7;margin-bottom:1rem;">
+        <strong style="color:var(--accent);">Test Mode 1</strong> — Safe low-speed testing. Programs activated only from enabled iPendant with DEADMAN switch centered. Safety fence is <em>bypassed</em>. Mode can be locked with the key.
+      </p>
+      <div class="mode-grid">
+        <div class="mode-prop">
+          <div class="mode-prop-label">Cartesian Speed</div>
+          <div class="mode-prop-val">&lt; 250 mm/sec</div>
+          <div class="speed-bar"><div class="speed-fill" style="width:25%;background:var(--accent3);"></div></div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Joint Speed</div>
+          <div class="mode-prop-val">&lt; 10% maximum</div>
+          <div class="speed-bar"><div class="speed-fill" style="width:10%;background:var(--accent3);"></div></div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Program Speed</div>
+          <div class="mode-prop-val">Capped at T1 safe speed</div>
+          <div class="speed-bar"><div class="speed-fill" style="width:25%;background:var(--accent);"></div></div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Safety Fence</div>
+          <div class="mode-prop-val" style="color:#ffaa44;">Bypassed ⚠</div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Key Lock</div>
+          <div class="mode-prop-val" style="color:var(--accent3);">Available ✓</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mode-content" id="mode-t2">
+      <p style="color:var(--text);font-size:0.9rem;line-height:1.7;margin-bottom:1rem;">
+        <strong style="color:var(--accent2);">Test Mode 2</strong> — Full speed testing. Programs activated from iPendant only. Full program speed allowed with override up to 100%. Key cannot be removed in T2.
+      </p>
+      <div class="mode-grid">
+        <div class="mode-prop">
+          <div class="mode-prop-label">Cartesian Jog Speed</div>
+          <div class="mode-prop-val">&lt; 250 mm/sec</div>
+          <div class="speed-bar"><div class="speed-fill" style="width:25%;background:var(--accent3);"></div></div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Program Speed</div>
+          <div class="mode-prop-val">Full speed, 0–100%</div>
+          <div class="speed-bar"><div class="speed-fill" style="width:100%;background:var(--accent2);"></div></div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Activation</div>
+          <div class="mode-prop-val">iPendant + DEADMAN only</div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Key Lock</div>
+          <div class="mode-prop-val" style="color:#ff6b6b;">Not available ✗</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mode-content" id="mode-auto">
+      <p style="color:var(--text);font-size:0.9rem;line-height:1.7;margin-bottom:1rem;">
+        <strong style="color:var(--accent3);">Automatic Mode</strong> — Production operation. Programs activated from remote devices via peripheral I/O. Cannot start programs from iPendant. Safety fence is monitored. Key can be removed to lock.
+      </p>
+      <div class="mode-grid">
+        <div class="mode-prop">
+          <div class="mode-prop-label">Robot Speed</div>
+          <div class="mode-prop-val">Max program speed × override</div>
+          <div class="speed-bar"><div class="speed-fill" style="width:100%;background:var(--accent3);"></div></div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Activation</div>
+          <div class="mode-prop-val">Remote devices via I/O</div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Safety Fence</div>
+          <div class="mode-prop-val" style="color:var(--accent3);">Monitored ✓</div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">iPendant Start</div>
+          <div class="mode-prop-val" style="color:#ff6b6b;">Not available ✗</div>
+        </div>
+        <div class="mode-prop">
+          <div class="mode-prop-label">Key Lock</div>
+          <div class="mode-prop-val" style="color:var(--accent3);">Available ✓</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STARTUP -->
+<section class="section" id="startup">
+  <div class="section-label">4.6 — Controller Startup</div>
+  <h2 class="section-title reveal">Cold Start Procedure</h2>
+
+  <div class="steps-list" id="stepsList">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Visual Inspection</strong>
+        <p>Inspect the robot, controller, workcell, and surrounding area. Confirm all safeguards are in place and the work envelope is clear of personnel. DO NOT power on if any hazard is found.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Turn On Circuit Breaker</strong>
+        <p>Turn the power disconnect circuit breaker or power switch on the operator panel to ON. This applies power to the controller and robot.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Cold Start Initializes</strong>
+        <p>Controller initializes system variables, I/O configuration, and displays the HMI screen upon successful startup. The R-30iB Plus shows the home screen with Setup, Teach, Run, and Utility options.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">ALT</div>
+      <div class="step-content">
+        <strong>Cycle Power via iPendant</strong>
+        <p>Safer method: Press FCTN → Next → Cycle Power → Cold → YES. Built-in delay allows residual power to dissipate before restart — minimizes risk of PCB damage. <em>Not available on Mate controllers.</em></p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">↓</div>
+      <div class="step-content">
+        <strong>Power Down</strong>
+        <p>If motion is executing, press HOLD first. Then press ON/OFF (if applicable), then turn the breaker OFF. Note: changes are auto-saved to robot memory — no special save procedure required.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="section-label">4.8 — Chapter Review</div>
+  <h2 class="section-title reveal">Test Your Knowledge</h2>
+
+  <div class="quiz-section reveal" id="quizContainer">
+    <div id="quizContent"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">FANUC AMERICA // ROBOT SYSTEM // CH.04</div>
+  <p>MATAGHAND0318CE &nbsp;|&nbsp; HandlingTool Training &nbsp;|&nbsp; © 2020 FANUC America Corporation</p>
+</footer>
+
+<style>
+@keyframes arm1 { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes arm2 { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(-10deg); } }
+</style>
+
+<script>
+// ── Particles ──
+const particleContainer = document.getElementById('particles');
+for (let i = 0; i < 30; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + 'vw';
+  p.style.animationDuration = (8 + Math.random() * 15) + 's';
+  p.style.animationDelay = (Math.random() * 15) + 's';
+  p.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
+  if (Math.random() > 0.7) { p.style.background = '#ff6b00'; p.style.width = p.style.height = '3px'; }
+  particleContainer.appendChild(p);
+}
+
+// ── Scroll progress ──
+window.addEventListener('scroll', () => {
+  const scrolled = window.scrollY;
+  const total = document.body.scrollHeight - window.innerHeight;
+  document.getElementById('progressBar').style.width = (scrolled / total * 100) + '%';
+});
+
+// ── Reveal on scroll ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Step items reveal ──
+const stepObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const steps = entry.target.querySelectorAll('.step-item');
+      steps.forEach((s, i) => {
+        setTimeout(() => s.classList.add('visible'), i * 150);
+      });
+    }
+  });
+}, { threshold: 0.1 });
+
+const stepsList = document.getElementById('stepsList');
+if (stepsList) stepObserver.observe(stepsList);
+
+// ── Axis info ──
+const axisData = {
+  1: { title: 'J1 — Base Rotation (Axis 1)', body: 'The first major axis rotates the entire robot body left and right about a vertical axis. This is the primary positioning axis for placing the robot in the correct angular position relative to its workpiece. J1 is a rotational axis driven by the largest servo motor in the system.' },
+  2: { title: 'J2 — Lower Arm (Axis 2)', body: 'The second major axis swings the lower arm forward and backward. Combined with J1 and J3, it defines the robot\'s reach in 3D space. J2 is one of the primary "positioning" axes that establishes where in space the robot\'s wrist will be located.' },
+  3: { title: 'J3 — Upper Arm (Axis 3)', body: 'The third major axis controls vertical arm reach. It lifts the upper arm up and down relative to the lower arm. Together, J1, J2, and J3 form the "major axes" that position the robot\'s wrist center point anywhere within its work envelope.' },
+  4: { title: 'J4 — Wrist Roll (Axis 4)', body: 'The first minor axis allows the wrist to rotate about the arm\'s long axis — a rolling motion. Minor axes (J4–J6) control end-effector orientation. J4 contributes the rotational component needed to orient a tool at any angle.' },
+  5: { title: 'J5 — Wrist Pitch (Axis 5)', body: 'The second minor axis tilts the end effector up and down (pitch motion). Working with J4, it allows the robot to approach a workpiece from above, from the side, or at any angle. Critical for precise tool orientation during pick-and-place or welding operations.' },
+  6: { title: 'J6 — Wrist Yaw (Axis 6)', body: 'The sixth axis provides the final rotational degree of freedom — spinning the end effector about its own axis. This combined with J4 and J5 gives the robot full 3-axis wrist orientation, allowing the tool to approach any point in space at any desired angle.' }
+};
+
+function showAxisInfo(n) {
+  document.querySelectorAll('.axis-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('axis-' + n).classList.add('active');
+  const data = axisData[n];
+  document.getElementById('infoTitle').textContent = data.title;
+  document.getElementById('infoBody').textContent = data.body;
+}
+
+// ── SOP ──
+const sopData = {
+  'estop': { text: '⛔ EMERGENCY STOP — Immediately applies all robot brakes and removes power from all servo motors. The robot halts instantly. An E-Stop condition must be cleared before resuming operation.', color: '#ff5555' },
+  'fault-reset': { text: '🔵 FAULT RESET — After identifying and correcting a fault condition, press this button to clear the fault message from the iPendant screen and re-enable robot operation.', color: 'var(--accent)' },
+  'cycle-start': { text: '🟢 CYCLE START — Activates robot programs when in AUTO mode and all required conditions are met. The green LED illuminates while a program is running.', color: 'var(--accent3)' },
+  'fault-led': { text: '🔴 FAULT LED — This red indicator illuminates when any fault condition is detected. Check the iPendant screen for the specific fault code and description.', color: '#ff5555' },
+  'power-led': { text: '⚪ POWER LED — White indicator confirming the controller is powered on and operational. If this LED is off, the controller is not receiving power.', color: '#ccc' },
+  'mode': { text: '🔑 MODE SWITCH — Key switch to select AUTO, T1, or T2 operation mode. Changing the mode pauses the robot and displays the new mode on the iPendant. Remove the key in AUTO or T1 to lock the mode.', color: 'var(--text)' },
+  'hour': { text: '⏱ HOUR METER — Tracks total cumulative servo ON time. Used for scheduling preventive maintenance and lubrication intervals based on actual runtime.', color: 'var(--dim)' }
+};
+
+function sopClick(key) {
+  const info = document.getElementById('sopInfo');
+  const d = sopData[key];
+  info.textContent = d.text;
+  info.style.display = 'block';
+  info.style.borderLeftColor = d.color;
+  info.style.animation = 'none';
+  info.offsetHeight;
+  info.style.animation = 'fadeIn 0.3s ease';
+}
+
+// ── Mode tabs ──
+function switchMode(mode, btn) {
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.mode-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('mode-' + mode).classList.add('active');
+}
+
+// ── Quiz ──
+const questions = [
+  {
+    q: 'Which axes make up the MAJOR axes of a 6-axis robot?',
+    opts: ['J4, J5, J6', 'J1, J2, J3', 'J1, J3, J5', 'J2, J4, J6'],
+    correct: 1,
+    explain: 'J1, J2, and J3 are the major axes. They position the robot\'s wrist center point anywhere in 3D space.',
+    wrongExplain: 'J1, J2, and J3 are the three major axes. J4, J5, and J6 are the minor (wrist) axes.'
+  },
+  {
+    q: 'Which mode limits all Cartesian speed to less than 250 mm/sec AND joint speed to less than 10%?',
+    opts: ['AUTO Mode', 'T2 Mode', 'T1 Mode', 'Neither — this is a system variable'],
+    correct: 2,
+    explain: 'T1 (Test Mode 1) applies speed limits of < 250 mm/sec Cartesian and < 10% joint speed for safe manual testing.',
+    wrongExplain: 'T1 (Test Mode 1) is the low-speed test mode. T2 allows full program speed, and AUTO runs at programmed speed.'
+  },
+  {
+    q: 'What is the maximum total number of axes a FANUC R-30iB controller can support?',
+    opts: ['36 axes', '48 axes', '60 axes', '72 axes'],
+    correct: 3,
+    explain: 'The controller supports up to 72 total axes across all motion groups.',
+    wrongExplain: '36 axes is the limit of the Axis Control PCB alone. With Auxiliary Axis PCBs the total can reach 72 axes.'
+  },
+  {
+    q: 'When is the internal brake on a servo motor applied?',
+    opts: ['When power is ON (electrically)', 'When power is OFF (mechanically)', 'Only during E-Stop', 'Continuously during motion'],
+    correct: 1,
+    explain: 'The brake is applied mechanically by spring force when power is OFF, and released electrically when power is ON.',
+    wrongExplain: 'The brake is a "fail-safe" design — it is applied by spring force when power is OFF (mechanical), and released by an electromagnet when power is ON (electrical).'
+  },
+  {
+    q: 'What does the Serial Pulse Coder (SPC) primarily track?',
+    opts: ['Program execution steps', 'Motor position and speed', 'Input/output signals', 'Brake voltage levels'],
+    correct: 1,
+    explain: 'The SPC is a FANUC proprietary encoder that tracks position and speed for each robot motor using an optical disc system.',
+    wrongExplain: 'The SPC (Serial Pulse Coder) is an optical encoder on each servo motor that tracks motor position and speed, sending data as serial packets to the controller.'
+  }
+];
+
+let currentQ = 0;
+let answered = false;
+
+function renderQuiz() {
+  const q = questions[currentQ];
+  document.getElementById('quizContent').innerHTML = `
+    <p style="font-family:'Share Tech Mono',monospace;font-size:0.7rem;color:var(--dim);margin-bottom:1rem;letter-spacing:0.2em;">QUESTION ${currentQ + 1} OF ${questions.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-options">
+      ${q.opts.map((o, i) => `
+        <div class="quiz-opt" id="opt-${i}" onclick="answerQuiz(${i})">
+          <div class="opt-letter">${String.fromCharCode(65+i)}</div>
+          ${o}
+        </div>
+      `).join('')}
+    </div>
+    <div class="quiz-feedback" id="qfeedback"></div>
+    <div style="margin-top:1.5rem;display:flex;gap:1rem;align-items:center;">
+      ${currentQ > 0 ? '<button onclick="prevQ()" style="background:none;border:1px solid var(--border);color:var(--dim);padding:0.6rem 1.2rem;border-radius:3px;cursor:pointer;font-family:Exo 2,sans-serif;font-size:0.85rem;">← Prev</button>' : ''}
+      <button id="nextBtn" onclick="nextQ()" style="display:none;background:rgba(0,212,255,0.1);border:1px solid var(--accent);color:var(--accent);padding:0.6rem 1.5rem;border-radius:3px;cursor:pointer;font-family:Exo 2,sans-serif;font-size:0.85rem;">${currentQ < questions.length - 1 ? 'Next →' : 'Finish'}</button>
+    </div>
+  `;
+  answered = false;
+}
+
+function answerQuiz(i) {
+  if (answered) return;
+  answered = true;
+  const q = questions[currentQ];
+  const feedback = document.getElementById('qfeedback');
+  document.querySelectorAll('.quiz-opt').forEach((el, idx) => {
+    el.classList.add('answered');
+    if (idx === q.correct) el.classList.add('correct');
+    else if (idx === i && idx !== q.correct) el.classList.add('wrong');
+  });
+  if (i === q.correct) {
+    feedback.textContent = '✓ ' + q.explain;
+    feedback.className = 'quiz-feedback show good';
+  } else {
+    feedback.textContent = '✗ Not quite — the correct answer is "' + q.opts[q.correct] + '". ' + q.wrongExplain;
+    feedback.className = 'quiz-feedback show bad';
+  }
+  document.getElementById('nextBtn').style.display = 'inline-block';
+}
+
+function nextQ() {
+  if (currentQ < questions.length - 1) { currentQ++; renderQuiz(); }
+  else {
+    document.getElementById('quizContent').innerHTML = `
+      <div style="text-align:center;padding:2rem;">
+        <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent);text-shadow:var(--glow);margin-bottom:1rem;">✓</div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:0.5rem;">CHAPTER COMPLETE</div>
+        <p style="color:var(--dim);font-size:0.9rem;margin-bottom:2rem;">You've reviewed all key concepts from Chapter 4: Robot System.</p>
+        <button onclick="currentQ=0;renderQuiz();" style="background:rgba(0,212,255,0.1);border:1px solid var(--accent);color:var(--accent);padding:0.8rem 2rem;border-radius:3px;cursor:pointer;font-family:'Orbitron',sans-serif;font-size:0.8rem;letter-spacing:0.1em;">RESTART QUIZ</button>
+      </div>
+    `;
+  }
+}
+
+function prevQ() {
+  if (currentQ > 0) { currentQ--; renderQuiz(); }
+}
+
+renderQuiz();
+
+// ── Motor Canvas Animation ──
+(function() {
+  const canvas = document.getElementById('motorCanvas');
+  const ctx = canvas.getContext('2d');
+  const pwmCanvas = document.getElementById('pwmCanvas');
+  const pwmCtx = pwmCanvas.getContext('2d');
+
+  // Scale for retina
+  const dpr = window.devicePixelRatio || 1;
+  [canvas, pwmCanvas].forEach(c => {
+    const w = c.width, h = c.height;
+    c.width = w * dpr; c.height = h * dpr;
+    c.style.width = w + 'px'; c.style.height = h + 'px';
+    c.getContext('2d').scale(dpr, dpr);
+  });
+
+  const W = 300, H = 160;
+
+  // Layout
+  const brakeX = 18, brakeY = 30, brakeW = 38, brakeH = 90;
+  const motorX = 65, motorY = 20, motorW = 160, motorH = 110;
+  const spcX = 234, spcY = 30, spcW = 50, spcH = 90;
+  const shaftY = H / 2;
+  const rotorCX = motorX + motorW / 2;
+  const rotorCY = motorY + motorH / 2;
+  const rotorR = 34;
+
+  let angle = 0;         // rotor angle
+  let spcAngle = 0;      // encoder disc angle (opposite direction)
+  let brakeGlow = 0;     // brake pulse
+  let spcPulse = 0;      // spc data pulse
+  let t = 0;             // global time
+
+  // PWM waveform buffer
+  const pwmW = 300, pwmH = 30;
+  const pwmHistory = [];
+  for (let i = 0; i < pwmW; i++) pwmHistory.push(0);
+
+  function roundRect(ctx, x, y, w, h, r, fill, stroke, lw) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1.5; ctx.stroke(); }
+  }
+
+  function drawMotor() {
+    ctx.clearRect(0, 0, W, H);
+
+    // ── Shafts ──
+    // Left shaft (brake side)
+    ctx.fillStyle = '#1a3a5c';
+    ctx.fillRect(brakeX + brakeW, shaftY - 5, motorX - brakeX - brakeW, 10);
+    // Right shaft (SPC side)
+    ctx.fillRect(motorX + motorW, shaftY - 5, spcX - motorX - motorW, 10);
+
+    // ── Brake box ──
+    roundRect(ctx, brakeX, brakeY, brakeW, brakeH, 5, '#0a1520', '#ff6b00', 1.5);
+    // Brake glow pulse
+    const bgAlpha = 0.15 + 0.12 * Math.sin(brakeGlow);
+    ctx.fillStyle = `rgba(255,107,0,${bgAlpha})`;
+    ctx.beginPath(); ctx.roundRect(brakeX, brakeY, brakeW, brakeH, 5); ctx.fill();
+    // Spring lines inside brake
+    for (let i = 0; i < 4; i++) {
+      const by = brakeY + 15 + i * 18;
+      ctx.strokeStyle = 'rgba(255,107,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(brakeX + 6, by);
+      ctx.lineTo(brakeX + brakeW - 6, by);
+      ctx.stroke();
+    }
+    // Label
+    ctx.fillStyle = '#ff6b00';
+    ctx.font = '7px "Share Tech Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('BRAKE', brakeX + brakeW / 2, brakeY + brakeH + 14);
+
+    // ── Motor housing ──
+    roundRect(ctx, motorX, motorY, motorW, motorH, 8, '#0d1e2e', '#1a3a5c', 2);
+
+    // Windings (static arcs around rotor)
+    for (let i = 0; i < 6; i++) {
+      const wa = (i / 6) * Math.PI * 2;
+      const wx = rotorCX + (rotorR + 12) * Math.cos(wa);
+      const wy = rotorCY + (rotorR + 12) * Math.sin(wa);
+      ctx.beginPath();
+      ctx.arc(wx, wy, 7, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,212,255,${0.15 + 0.1 * Math.sin(t * 3 + i)})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // ── Rotor (spinning) ──
+    ctx.save();
+    ctx.translate(rotorCX, rotorCY);
+    ctx.rotate(angle);
+
+    // Rotor body
+    ctx.beginPath();
+    ctx.arc(0, 0, rotorR, 0, Math.PI * 2);
+    ctx.fillStyle = '#091828';
+    ctx.fill();
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Rotor poles (4 magnets)
+    for (let i = 0; i < 4; i++) {
+      const pa = (i / 4) * Math.PI * 2;
+      const px1 = Math.cos(pa) * 8, py1 = Math.sin(pa) * 8;
+      const px2 = Math.cos(pa) * (rotorR - 4), py2 = Math.sin(pa) * (rotorR - 4);
+      ctx.beginPath();
+      ctx.moveTo(px1, py1);
+      ctx.lineTo(px2, py2);
+      ctx.strokeStyle = i % 2 === 0 ? 'rgba(0,212,255,0.8)' : 'rgba(255,107,0,0.8)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Pole tip arc
+      ctx.beginPath();
+      ctx.arc(px2, py2, 5, 0, Math.PI * 2);
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(0,212,255,0.4)' : 'rgba(255,107,0,0.4)';
+      ctx.fill();
+    }
+
+    // Center hub
+    ctx.beginPath();
+    ctx.arc(0, 0, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#00d4ff';
+    ctx.fill();
+
+    ctx.restore();
+
+    // Rotor glow
+    const grd = ctx.createRadialGradient(rotorCX, rotorCY, rotorR - 5, rotorCX, rotorCY, rotorR + 20);
+    grd.addColorStop(0, 'rgba(0,212,255,0.08)');
+    grd.addColorStop(1, 'rgba(0,212,255,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(rotorCX, rotorCY, rotorR + 20, 0, Math.PI * 2); ctx.fill();
+
+    // Motor label
+    ctx.fillStyle = 'rgba(0,212,255,0.4)';
+    ctx.font = '7px "Share Tech Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('AC SERVO MOTOR', rotorCX, motorY + motorH + 14);
+
+    // ── SPC Encoder box ──
+    roundRect(ctx, spcX, spcY, spcW, spcH, 5, '#0a1520', '#00ff88', 1.5);
+
+    // Encoder disc (spinning opposite direction)
+    ctx.save();
+    ctx.translate(spcX + spcW / 2, spcY + spcH / 2);
+    ctx.rotate(spcAngle);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, 0, Math.PI * 2);
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Encoder slots
+    for (let i = 0; i < 12; i++) {
+      const sa = (i / 12) * Math.PI * 2;
+      const r1 = 9, r2 = 15;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(sa) * r1, Math.sin(sa) * r1);
+      ctx.lineTo(Math.cos(sa) * r2, Math.sin(sa) * r2);
+      ctx.strokeStyle = `rgba(0,255,136,${i % 2 === 0 ? 0.9 : 0.2})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Center
+    ctx.beginPath();
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#00ff88';
+    ctx.fill();
+
+    ctx.restore();
+
+    // SPC light beam (photocell)
+    const beamAlpha = 0.3 + 0.5 * Math.abs(Math.sin(spcPulse));
+    ctx.strokeStyle = `rgba(0,255,136,${beamAlpha})`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(spcX + spcW / 2 - 18, spcY + spcH / 2);
+    ctx.lineTo(spcX + spcW / 2 + 18, spcY + spcH / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // SPC label
+    ctx.fillStyle = '#00ff88';
+    ctx.font = '7px "Share Tech Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('SPC', spcX + spcW / 2, spcY + spcH + 14);
+    ctx.fillText('ENCODER', spcX + spcW / 2, spcY + spcH + 23);
+
+    // ── Data packet flash (SPC → CPU) ──
+    if (Math.floor(spcPulse / 1) % 8 < 1) {
+      ctx.fillStyle = 'rgba(0,255,136,0.7)';
+      ctx.font = '6px "Share Tech Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('TX ►', spcX + spcW + 2, shaftY - 8);
+    }
+  }
+
+  // PWM waveform
+  function drawPWM() {
+    pwmCtx.clearRect(0, 0, pwmW, pwmH);
+    pwmCtx.fillStyle = '#060e18';
+    pwmCtx.fillRect(0, 0, pwmW, pwmH);
+
+    // Add new sample
+    const duty = 0.65; // 65% duty cycle
+    const period = 20;
+    const phase = (t * 8) % period;
+    pwmHistory.shift();
+    pwmHistory.push(phase < period * duty ? 1 : 0);
+
+    // Draw waveform
+    pwmCtx.beginPath();
+    pwmCtx.strokeStyle = '#00d4ff';
+    pwmCtx.lineWidth = 1.5;
+    for (let i = 0; i < pwmHistory.length; i++) {
+      const x = i;
+      const y = pwmHistory[i] === 1 ? 4 : pwmH - 4;
+      if (i === 0) pwmCtx.moveTo(x, y);
+      else {
+        // Vertical step
+        if (pwmHistory[i] !== pwmHistory[i - 1]) {
+          pwmCtx.lineTo(x, pwmHistory[i - 1] === 1 ? 4 : pwmH - 4);
+        }
+        pwmCtx.lineTo(x, y);
+      }
+    }
+    pwmCtx.stroke();
+
+    // Glow
+    pwmCtx.shadowColor = '#00d4ff';
+    pwmCtx.shadowBlur = 4;
+    pwmCtx.stroke();
+    pwmCtx.shadowBlur = 0;
+  }
+
+  function animate() {
+    t += 0.025;
+    angle += 0.06;           // rotor spins forward
+    spcAngle -= 0.09;        // encoder spins faster, opposite
+    brakeGlow += 0.04;
+    spcPulse += 0.15;
+
+    drawMotor();
+    drawPWM();
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+})();
+
+// ── Robot Arm Axis Diagram ──
+(function() {
+  const canvas = document.getElementById('robotArmCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = 260, H = 270;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  const BLUE   = '#00d4ff';
+  const ORANGE = '#ff6b00';
+  const PANEL  = '#0d1e2e';
+  const DARK   = '#091828';
+  const BORDER = '#1a3a5c';
+
+  // Joint positions — natural arm pose, working bottom-up
+  const joints = [
+    { x: 130, y: 235, label: 'J1', major: true  },
+    { x: 130, y: 192, label: 'J2', major: true  },
+    { x: 100, y: 138, label: 'J3', major: true  },
+    { x: 118, y:  94, label: 'J4', major: false },
+    { x: 150, y:  62, label: 'J5', major: false },
+    { x: 150, y:  34, label: 'J6', major: false },
+  ];
+
+  function drawRR(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+  }
+
+  function drawLink(x1, y1, x2, y2, t) {
+    const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+    const nx=-dy/len*t/2, ny=dx/len*t/2;
+    ctx.beginPath();
+    ctx.moveTo(x1+nx,y1+ny); ctx.lineTo(x2+nx,y2+ny);
+    ctx.lineTo(x2-nx,y2-ny); ctx.lineTo(x1-nx,y1-ny);
+    ctx.closePath();
+  }
+
+  function drawJoint(x, y, r, color) {
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=DARK; ctx.fill();
+    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x,y,r*0.38,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    // subtle glow ring
+    ctx.beginPath(); ctx.arc(x,y,r+3,0,Math.PI*2);
+    ctx.strokeStyle=color; ctx.lineWidth=0.5; ctx.globalAlpha=0.25; ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+
+  function drawLabel(x, y, text, color, side) {
+    const ox = side==='right' ? 13 : -13;
+    const lx = x + ox;
+    // leader
+    ctx.beginPath();
+    ctx.moveTo(x+(side==='right'?11:-11), y);
+    ctx.lineTo(lx+(side==='right'?2:-2), y);
+    ctx.strokeStyle=color; ctx.lineWidth=0.8;
+    ctx.setLineDash([2,2]); ctx.stroke(); ctx.setLineDash([]);
+    // badge
+    const bw=24, bh=14;
+    const bx = side==='right' ? lx : lx-bw;
+    ctx.fillStyle = color===BLUE ? 'rgba(0,212,255,0.13)' : 'rgba(255,107,0,0.13)';
+    ctx.strokeStyle = color; ctx.lineWidth=0.8;
+    drawRR(bx, y-bh/2, bw, bh, 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=color; ctx.font='bold 9px "Share Tech Mono",monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(text, bx+bw/2, y);
+  }
+
+  // Base
+  ctx.fillStyle=PANEL; ctx.strokeStyle=BORDER; ctx.lineWidth=1.5;
+  drawRR(92,243,76,14,3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=DARK; ctx.strokeStyle=BORDER; ctx.lineWidth=1;
+  drawRR(80,249,100,8,2); ctx.fill(); ctx.stroke();
+
+  // J1 rotation arc
+  ctx.beginPath();
+  ctx.arc(130,243,30,Math.PI*0.82,Math.PI*0.18,true);
+  ctx.strokeStyle='rgba(0,212,255,0.3)'; ctx.lineWidth=1;
+  ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(102,235); ctx.lineTo(97,243); ctx.lineTo(106,242);
+  ctx.fillStyle='rgba(0,212,255,0.35)'; ctx.fill();
+
+  // Links
+  [[0,1,18],[1,2,15],[2,3,12],[3,4,10],[4,5,8]].forEach(([a,b,t])=>{
+    const ja=joints[a], jb=joints[b];
+    drawLink(ja.x,ja.y,jb.x,jb.y,t);
+    ctx.fillStyle=PANEL; ctx.fill();
+    ctx.strokeStyle=BORDER; ctx.lineWidth=1.2; ctx.stroke();
+  });
+
+  // Tool triangle
+  ctx.beginPath();
+  ctx.moveTo(150,15); ctx.lineTo(142,34); ctx.lineTo(158,34);
+  ctx.closePath();
+  ctx.fillStyle=ORANGE; ctx.globalAlpha=0.75; ctx.fill(); ctx.globalAlpha=1;
+  ctx.beginPath(); ctx.arc(150,34,5,0,Math.PI*2);
+  ctx.fillStyle=DARK; ctx.fill(); ctx.strokeStyle=ORANGE; ctx.lineWidth=1.5; ctx.stroke();
+
+  // Joints on top
+  const radii = [12,11,10,9,8,8];
+  joints.forEach((j,i)=>{ drawJoint(j.x,j.y,radii[i],j.major?BLUE:ORANGE); });
+
+  // Labels — alternating sides
+  const sides=['right','right','left','right','right','right'];
+  joints.forEach((j,i)=>{ drawLabel(j.x,j.y,j.label,j.major?BLUE:ORANGE,sides[i]); });
+
+  // Legend
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.strokeStyle=BORDER; ctx.lineWidth=1;
+  drawRR(5,6,100,38,3); ctx.fill(); ctx.stroke();
+  [{ color:BLUE,label:'MAJOR (J1–J3)',y:19},{ color:ORANGE,label:'MINOR (J4–J6)',y:34}].forEach(({color,label,y})=>{
+    ctx.beginPath(); ctx.arc(18,y,5,0,Math.PI*2);
+    ctx.fillStyle=DARK; ctx.fill(); ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(18,y,2,0,Math.PI*2); ctx.fillStyle=color; ctx.fill();
+    ctx.fillStyle=color; ctx.font='7.5px "Share Tech Mono",monospace';
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(label,28,y);
+  });
+
+})();
+</script>
+</body>
+</html>

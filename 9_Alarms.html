@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Alarms — Chapter 9</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent),var(--accent2));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent);text-shadow:var(--glow)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow),0 0 60px rgba(0,212,255,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent2)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(0,212,255,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(255,107,0,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem;filter:drop-shadow(0 0 8px rgba(0,212,255,.4))}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow);animation:pg 2s ease infinite}
+  .sdot.o{background:var(--accent2);box-shadow:var(--glow2)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .caut-box{background:rgba(255,140,0,.08);border:1px solid rgba(255,140,0,.4);border-left:3px solid #ff8c00;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:1.5rem 0}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .ct{font-size:.85rem;color:#ffc080;line-height:1.7}.ct strong{color:#ffe0c0}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  /* Error source cards */
+  .err-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-bottom:2rem}
+  @media(max-width:700px){.err-methods{grid-template-columns:1fr}}
+  .em-card{border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:transform .3s}
+  .em-card:hover{transform:translateY(-4px)}
+  .em-card.hw{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .em-card.sw{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .em-card.ex{background:rgba(255,50,50,.06);border:1px solid rgba(255,50,50,.35)}
+  .em-num{font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;margin-bottom:.3rem}
+  .em-card.hw .em-num{color:var(--accent)}.em-card.sw .em-num{color:var(--accent2)}.em-card.ex .em-num{color:#ff3232}
+  .em-title{font-family:'Orbitron',sans-serif;font-size:.78rem;font-weight:700;margin-bottom:.5rem}
+  .em-card.hw .em-title{color:var(--accent)}.em-card.sw .em-title{color:var(--accent2)}.em-card.ex .em-title{color:#ff3232}
+  .em-badge{font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:.15rem .5rem;border-radius:2px;display:inline-block;margin-bottom:.8rem}
+  .em-card.hw .em-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+  .em-card.sw .em-badge{background:rgba(255,107,0,.12);color:var(--accent2);border:1px solid rgba(255,107,0,.3)}
+  .em-card.ex .em-badge{background:rgba(255,50,50,.12);color:#ff5555;border:1px solid rgba(255,50,50,.3)}
+  .em-body{font-size:.82rem;color:var(--dim);line-height:1.7}
+
+  /* Alarm terminal */
+  .terminal{background:#030a0f;border:1px solid var(--accent);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .t-header{color:var(--accent);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(0,212,255,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-label{color:var(--accent3)}.t-val{color:#fff}.t-dim{color:var(--dim)}
+  .t-row{display:flex;justify-content:space-between;gap:1rem}
+  .t-cursor{animation:blink .8s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .fault-line{color:#ff5555;line-height:1.9}
+  .fault-line span{color:var(--accent2)}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent);flex-shrink:0;box-shadow:var(--glow);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+
+  /* DCS states */
+  .dcs-states{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:2rem 0}
+  @media(max-width:600px){.dcs-states{grid-template-columns:1fr}}
+  .dcs-card{border-radius:4px;padding:1.8rem;text-align:center}
+  .dcs-card.ok{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .dcs-card.bad{background:rgba(255,50,50,.06);border:1px solid rgba(255,50,50,.35)}
+  .dcs-title{font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.8rem}
+  .dcs-card.ok .dcs-title{color:var(--accent3)}.dcs-card.bad .dcs-title{color:#ff5555}
+  .dcs-body{font-size:.83rem;color:var(--dim);line-height:1.7;margin-top:.6rem}
+
+  /* Chain fault display */
+  .chain-faults{display:flex;flex-direction:column;gap:.6rem;margin:1.2rem 0}
+  .chain-fault-item{background:#030a0f;border:1px solid rgba(255,50,50,.4);border-radius:3px;padding:.8rem 1.2rem;font-family:'Share Tech Mono',monospace;font-size:.8rem;color:#ff8888;display:flex;align-items:center;gap:.8rem}
+  .chain-fault-item::before{content:'⬤';color:#ff3232;font-size:.5rem;animation:pg 1.5s ease infinite}
+
+  /* Version ID table */
+  .version-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:1rem}
+  .version-table th{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:.18em;color:var(--accent);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+  .version-table td{padding:.75rem 1rem;border-bottom:1px solid rgba(26,58,92,.4);color:var(--text);vertical-align:top;transition:background .2s}
+  .version-table tr:hover td{background:rgba(0,212,255,.04)}
+  .version-table td:first-child{color:#fff;font-weight:600;font-family:'Share Tech Mono',monospace;white-space:nowrap}
+  .version-table td:nth-child(2){color:var(--accent3);white-space:nowrap}
+
+  /* Singularity joint diagram */
+  .sing-diagram{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;display:flex;flex-direction:column;align-items:center}
+  .sing-label{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.15em;margin-bottom:.75rem;text-align:center;text-transform:uppercase}
+
+  /* Alarm log simulator */
+  .alarm-sim{background:#030a0f;border:1px solid var(--accent);border-radius:4px;overflow:hidden;font-family:'Share Tech Mono',monospace;font-size:.78rem}
+  .alarm-sim-header{background:rgba(0,212,255,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .alarm-sim-title{color:var(--accent);font-size:.7rem;letter-spacing:.15em}
+  .alarm-sim-badge{background:rgba(255,50,50,.2);border:1px solid rgba(255,50,50,.4);color:#ff8888;font-size:.62rem;padding:.1rem .5rem;border-radius:2px}
+  .alarm-row{display:flex;gap:1rem;align-items:center;padding:.55rem 1rem;border-bottom:1px solid rgba(26,58,92,.25);cursor:pointer;transition:background .2s}
+  .alarm-row:hover{background:rgba(0,212,255,.04)}
+  .alarm-row.selected{background:rgba(0,212,255,.07);border-left:2px solid var(--accent)}
+  .alarm-idx{color:var(--dim);min-width:1.5rem}
+  .alarm-code{color:var(--accent2);min-width:6.5rem}
+  .alarm-msg{color:var(--text);flex:1}
+  .alarm-detail{background:rgba(0,0,0,.3);border-top:1px solid var(--border);padding:1rem;display:none}
+  .alarm-detail.show{display:block}
+  .alarm-detail-cause{color:#ff8888;font-size:.78rem;margin-bottom:.5rem}
+  .alarm-detail-remedy{color:var(--accent3);font-size:.78rem}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2.5rem}
+  .quiz-q{font-size:1.05rem;color:#fff;margin-bottom:1.4rem;line-height:1.65;font-weight:600}
+  .quiz-opts{display:flex;flex-direction:column;gap:.65rem}
+  .quiz-opt{padding:.88rem 1.2rem;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:.9rem;color:var(--text);transition:all .2s;display:flex;align-items:center;gap:.8rem}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent);color:#fff;background:rgba(0,212,255,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);background:rgba(0,255,136,.1);color:var(--accent3)}
+  .quiz-opt.wrong{border-color:#ff4444;background:rgba(255,68,68,.1);color:#ff8888}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.73rem;width:1.4rem;height:1.4rem;border-radius:2px;background:rgba(0,212,255,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;font-weight:700}
+  .quiz-fb{margin-top:1rem;font-family:'Share Tech Mono',monospace;font-size:.83rem;padding:.8rem 1rem;border-radius:3px;display:none;line-height:1.6}
+  .quiz-fb.show{display:block;animation:fi .3s ease}.quiz-fb.good{background:rgba(0,255,136,.1);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}.quiz-fb.bad{background:rgba(255,68,68,.1);color:#ff8888;border:1px solid rgba(255,68,68,.3)}
+  .quiz-nav{margin-top:1.4rem;display:flex;gap:1rem}
+  .qbtn{background:none;border:1px solid var(--border);color:var(--dim);padding:.6rem 1.2rem;border-radius:3px;cursor:pointer;font-family:'Exo 2',sans-serif;font-size:.85rem;transition:all .2s}
+  .qbtn.pri{background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)}.qbtn:hover{border-color:var(--accent);color:var(--text)}.qbtn.pri:hover{background:rgba(0,212,255,.2)}
+  @keyframes fi{from{opacity:0}to{opacity:1}}
+
+  footer{position:relative;z-index:10;padding:3rem 2rem;border-top:1px solid var(--border);text-align:center}
+  .foot-logo{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.3em;margin-bottom:1rem}
+  footer p{font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);letter-spacing:.1em}
+
+  @media(max-width:600px){nav{padding:.8rem 1rem}.nav-links{display:none}.section{padding:3rem 1rem}.err-methods{grid-template-columns:1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+<div id="particles"></div>
+
+<nav>
+  <a href="#hero" class="nav-logo">FANUC // CH.09</a>
+  <ul class="nav-links">
+    <li><a href="#diagnosis">Fault Diagnosis</a></li>
+    <li><a href="#alarmlog">Alarm Log</a></li>
+    <li><a href="#dcs">DCS</a></li>
+    <li><a href="#singularity">Singularity</a></li>
+    <li><a href="#chain">Chain Failure</a></li>
+    <li><a href="#version">Version ID</a></li>
+    <li><a href="#quiz">Review</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool Training Module</div>
+  <h1>Alarm <span>Response</span></h1>
+  <p class="hero-sub">Chapter 9 — Diagnosing Faults &amp; Recovering from Errors</p>
+  <div class="hero-cw">
+    <canvas id="heroC" width="240" height="220" style="display:block;filter:drop-shadow(0 0 22px rgba(255,107,0,.45))"></canvas>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO BEGIN</div>
+</section>
+
+<!-- OBJECTIVES -->
+<section class="section reveal" id="diagnosis">
+  <div class="sec-label">9.1 — Learning Objectives</div>
+  <h2 class="sec-title">Fault and Message Diagnosis</h2>
+  <p style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Errors occur for a variety of reasons. Understanding the root cause — rather than blindly pressing Reset — is the key to safe and effective troubleshooting. The alarm log and diagnostic tool are your primary resources.</p>
+
+  <div class="err-methods reveal">
+    <div class="em-card hw">
+      <div class="em-num">01</div>
+      <div class="em-title">Hardware Problems</div>
+      <div class="em-badge">PHYSICAL CAUSE</div>
+      <div class="em-body">A broken cable, damaged tooling, or a faulty sensor. These faults typically require physical inspection and repair before the alarm can be cleared and normal operation resumed.</div>
+    </div>
+    <div class="em-card sw">
+      <div class="em-num">02</div>
+      <div class="em-title">Software Problems</div>
+      <div class="em-badge">PROGRAM / DATA</div>
+      <div class="em-body">An incorrect program, bad data, or an out-of-range parameter. These faults require reviewing program logic, position data, or system configuration to identify the incorrect value.</div>
+    </div>
+    <div class="em-card ex">
+      <div class="em-num">03</div>
+      <div class="em-title">External Problems</div>
+      <div class="em-badge">ENVIRONMENT</div>
+      <div class="em-body">An open safety door, an over-travel condition, or an external device fault. These are often the simplest to resolve — correct the external condition, then reset the controller.</div>
+    </div>
+  </div>
+
+  <div class="note-box reveal">
+    <div class="bi">ℹ️</div>
+    <div class="nt"><strong>Best Practice:</strong> Most errors can be cleared by correcting the problem and pressing the Reset Key on the teach pendant or SOP. However, blindly pressing Reset without understanding the cause will not actually solve the issue — and may mask a more serious fault.</div>
+  </div>
+
+  <div class="sub-title reveal">Key Troubleshooting Tools</div>
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon">📋</div>
+      <div class="card-title">Alarm Log</div>
+      <div class="card-body">View all active alarms at once. The teach pendant title bar only shows the most recent alarm — the alarm log reveals the complete picture and helps determine which fault to address first.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔍</div>
+      <div class="card-title">Diagnostic Tool</div>
+      <div class="card-body">Press Shift + DIAG on any alarm to display the possible cause and recommended remedy. Useful for operators to determine whether maintenance intervention is needed.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🕐</div>
+      <div class="card-title">Alarm History</div>
+      <div class="card-body">Stores the 100 most recent alarms. Review patterns over time to identify intermittent faults. History can also be sorted by alarm type, showing the most recent 50 of each category.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ALARM LOG -->
+<section class="section" id="alarmlog">
+  <div class="sec-label">9.2.1 — Alarm Log</div>
+  <h2 class="sec-title reveal">Displaying the Alarm Log</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">The alarm log is an invaluable tool for understanding active alarms. The teach pendant title bar only shows the most recent alarm. When multiple alarms are present, the alarm screen is the only way to see them all.</p>
+
+      <!-- Interactive Alarm Simulator -->
+      <div class="alarm-sim">
+        <div class="alarm-sim-header">
+          <span class="alarm-sim-title">ALARM : ACTIVE</span>
+          <span class="alarm-sim-badge">4 ACTIVE</span>
+        </div>
+        <div class="alarm-row" onclick="selectAlarm(this,'SRVO-302','Set Hand broken to ENABLE','The hand broken input signal is set. A hardware fault on the end-of-arm tooling or its wiring is likely.','Check hand-broken signal wiring and tooling. Enable the signal or correct the wiring fault, then press Reset.')">
+          <span class="alarm-idx">1</span>
+          <span class="alarm-code">SRVO-302</span>
+          <span class="alarm-msg">Set Hand broken to ENABLE</span>
+        </div>
+        <div class="alarm-row" onclick="selectAlarm(this,'INTP-105','(ZERO, 1) Run request failed','The program ZERO was requested to run but the program is already being controlled by another task.','Release the program lock or stop the task holding the program, then attempt to run again.')">
+          <span class="alarm-idx">2</span>
+          <span class="alarm-code">INTP-105</span>
+          <span class="alarm-msg">(ZERO, 1) Run request failed</span>
+        </div>
+        <div class="alarm-row" onclick="selectAlarm(this,'PROG-040','Already locked by other task','A program is being accessed by two tasks simultaneously, which is not permitted.','Identify which task holds the lock and release it. Ensure only one task runs the program at a time.')">
+          <span class="alarm-idx"></span>
+          <span class="alarm-code"></span>
+          <span class="alarm-msg" style="color:var(--dim)">Already locked by other task</span>
+        </div>
+        <div class="alarm-row" onclick="selectAlarm(this,'MOTN-017','Limit error (G:1, A:1)','The robot attempted to move beyond its defined axis limit. A Cartesian or joint limit was violated.','Jog the affected axis in the opposite direction of the limit to move back into the valid range, then press Reset.')">
+          <span class="alarm-idx">3</span>
+          <span class="alarm-code">MOTN-017</span>
+          <span class="alarm-msg">Limit error (G:1, A:1)</span>
+        </div>
+        <div class="alarm-detail" id="alarmDetail">
+          <div class="alarm-detail-cause" id="alarmCause"></div>
+          <div class="alarm-detail-remedy" id="alarmRemedy"></div>
+        </div>
+      </div>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);margin-top:.5rem;letter-spacing:.1em">▲ TAP AN ALARM ROW TO VIEW DIAGNOSIS</p>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Procedure 9-1: Display Alarm Screen</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><strong>Press Menu</strong><p>Access the main menu on the teach pendant.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><strong>Select 4 ALARM</strong><p>Cursor down to Alarms and press Enter, or press the number 4 on the keypad.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><strong>View Active Alarms</strong><p>The Alarm: Active screen displays all currently active alarms, unlike the title bar which only shows the most recent.</p></div>
+        </div>
+      </div>
+
+      <div class="sub-title">Procedure 9-2: Access Alarm History</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><strong>Navigate to the Alarm Screen</strong><p>Follow Procedure 9-1 above to display the active alarm view.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><strong>Press F[3] HISTORY</strong><p>Switches the view to alarm history mode. Stores the 100 most recent alarms. Use F[1] TYPE to sort by alarm category.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><strong>Press F3 ACTIVE to return</strong><p>Returns to the live active alarm list from any history view.</p></div>
+        </div>
+      </div>
+
+      <div class="sub-title">Procedure 9-5: Diagnose a Fault</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><strong>Navigate to alarm screen</strong><p>Go to active alarms or history as appropriate.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><strong>Cursor to the target fault</strong><p>Place the cursor next to the fault or message you wish to diagnose.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><strong>Press Shift + DIAG</strong><p>Displays the possible cause and recommended remedy for the selected alarm. Press PREV to exit the diagnosis screen.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DCS -->
+<section class="section" id="dcs">
+  <div class="sec-label">9.3 — DCS Option</div>
+  <h2 class="sec-title reveal">Dual Check Safety (DCS)</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">The DCS Position/Speed Check feature monitors speed and position data using two independent CPUs in the robot controller. Position and speed errors are detected immediately and motor power is shut down.</p>
+
+  <div class="dcs-states reveal">
+    <div class="dcs-card ok">
+      <div class="dcs-title">✓ SAFE POSITION</div>
+      <canvas id="dcsOk" width="160" height="90" style="margin:.8rem auto;display:block"></canvas>
+      <div class="dcs-body">Robot is within the DCS Cartesian position boundary. Both CPUs confirm valid position. Normal operation continues.</div>
+    </div>
+    <div class="dcs-card bad">
+      <div class="dcs-title">✗ LIMIT VIOLATION</div>
+      <canvas id="dcsBad" width="160" height="90" style="margin:.8rem auto;display:block"></canvas>
+      <div class="dcs-body">Robot has crossed a DCS position boundary. Motor power is cut immediately. Fault: <span style="color:#ff5555;font-family:'Share Tech Mono',monospace;font-size:.78rem">SRVO-402 DCS Cart. pos. limit</span></div>
+    </div>
+  </div>
+
+  <div class="note-box reveal">
+    <div class="bi">🔧</div>
+    <div class="nt"><strong>Procedure 9-6 — Recover from DCS Position Violation:</strong><br>
+    1. Press <strong>Shift + Reset</strong> to clear the fault.<br>
+    2. Jog away from the DCS limit boundary before resuming operation.</div>
+  </div>
+</section>
+
+<!-- SINGULARITY -->
+<section class="section" id="singularity">
+  <div class="sec-label">9.4 — Singularity</div>
+  <h2 class="sec-title reveal">Singularity Error</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">Singularity occurs in Cartesian/X-Y-Z coordinate mode only. For most six-axis robots, wrist singularity occurs when the axes of Joints 4 and 6 become aligned.</p>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">When axis J5 approaches 0 degrees, the robot encounters an infinite combination of J4 and J6 positions that achieve the same Cartesian location — making motion control indeterminate.</p>
+
+      <div class="note-box">
+        <div class="bi">ℹ️</div>
+        <div class="nt"><strong>NOTE:</strong> Singularity is not a FANUC-specific issue — it is an inherent characteristic of all six-axis robots. Joint jogging is <strong>not</strong> affected by singularity errors.</div>
+      </div>
+
+      <div class="sub-title">Procedure 9-7: Recover from Singularity</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><strong>Press COORD — select Joint</strong><p>Switch from Cartesian coordinate mode to Joint coordinate mode.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><strong>Move Joint 5 (+/-) 10 degrees</strong><p>Jog J5 away from 0 degrees to break out of the singular configuration.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><strong>Return to Cartesian or continue jogging</strong><p>Once clear of singularity, switch back to your desired coordinate system and resume normal operation.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="sing-diagram">
+        <div class="sing-label">Singularity — Joint 5 Position vs. Valid Range</div>
+        <canvas id="singC" width="320" height="200" style="display:block;max-width:100%"></canvas>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);margin-top:.75rem;text-align:center;letter-spacing:.08em">J5 NEAR 0° — INFINITE J4/J6 COMBINATIONS</p>
+      </div>
+
+      <ul class="specs-list" style="margin-top:1.5rem">
+        <li class="spec-item"><div class="sdot r"></div><div class="spec-text"><strong>Singularity Zone</strong><span>When J5 approaches 0°, J4 and J6 become co-linear. An infinite number of joint angle pairs produce the same Cartesian result.</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Safe Operating Zone</strong><span>Keep J5 away from 0° during Cartesian moves. Program paths that avoid the singularity region to prevent runtime errors.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Joint Mode Immunity</strong><span>Singularity only affects Cartesian coordinate motion. Switching to Joint mode allows you to jog freely regardless of J5 position.</span></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CHAIN FAILURE -->
+<section class="section" id="chain">
+  <div class="sec-label">9.5 — Chain Failure</div>
+  <h2 class="sec-title reveal">Chain Failure Detection Error</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem">The robot controller may be equipped with a dual chain Control Reliable safety circuit. A single component failure does not prevent the stopping action but will prevent further system movement until corrected.</p>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.4rem">A fault is triggered when one safety chain is in an Emergency Stop condition and the other is not.</p>
+
+      <div class="chain-faults">
+        <div class="chain-fault-item">SRVO-230 &nbsp;Chain 1 (+24v abnormal)</div>
+        <div class="chain-fault-item">SRVO-231 &nbsp;Chain 2 (0v abnormal)</div>
+      </div>
+
+      <div class="warn-box">
+        <div class="bi">⚠️</div>
+        <div class="wt"><strong>WARNING:</strong> If you reset the chain failure fault without fixing the cause, the same alarm will occur again but the robot can move until it does. Always correct the root cause of the chain failure before continuing — otherwise you risk injuring personnel or damaging equipment.</div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Procedure 9-8: Reset a Chain Failure Alarm</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><strong>Correct the cause of the alarm</strong><p>Identify and fix the root cause of the chain failure before proceeding.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><strong>Create and release a different chain failure</strong><p>For example, press the EMERGENCY STOP button on the teach pendant and then press RESET to cycle the chain state.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><strong>Press MENU</strong><p>Navigate to the main menu on the teach pendant.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body"><strong>Select ALARMS</strong><p>Go to the Alarm screen from the menu.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body"><strong>Press F4 RES_1CH</strong><p>Initiates the single-channel reset procedure.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body"><strong>Verify YES — press F4</strong><p>Confirm the reset prompt: "Reset Single Channel Fault? [NO]" — select YES.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">7</div>
+          <div class="step-body"><strong>Press RESET</strong><p>Clear the fault from the Active Alarm screen to restore normal operation.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VERSION ID -->
+<section class="section" id="version">
+  <div class="sec-label">9.6 — Version Identification</div>
+  <h2 class="sec-title reveal">Robot F-Number &amp; Version ID</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">FANUC provides each robot with an <strong style="color:#fff">F-Number</strong> — a unique identification number encoding controller type, robot model, installed options, and sale information. It is located at the base of the robot and on the controller cabinet.</p>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">The <strong style="color:#fff">STATUS Version ID screen</strong> displays controller-specific software and hardware details. Have this information ready when contacting the FANUC America Corporation Hotline.</p>
+
+      <div class="note-box">
+        <div class="bi">📋</div>
+        <div class="nt"><strong>Procedure 9-9:</strong> Press Menu → -0- Next → cursor to Status → Version ID → Enter. Press NEXT then F3 ORDER FI to view installed software options.</div>
+      </div>
+
+      <ul class="specs-list" style="margin-top:1.5rem">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Software Edition</strong><span>The HandlingTool software version installed on the controller (e.g. 7DF1/10).</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>S/W Serial Number</strong><span>Unique identifier for the software license installed on this controller.</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Controller &amp; Robot F-Number</strong><span>Unique robot and controller identification numbers used for support and maintenance.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Robot Model &amp; DCS Version</strong><span>Identifies the exact robot model and Dual Check Safety software version.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="reveal">
+      <div class="terminal">
+        <div class="t-header">STATUS VERSION ID — EXAMPLE SCREEN</div>
+        <div class="t-row"><span class="t-label">&nbsp;1 HandlingTool</span><span class="t-val">7DF1/10</span></div>
+        <div class="t-row"><span class="t-label">&nbsp;2 S/W Serial No.</span><span class="t-val">DEV SW</span></div>
+        <div class="t-row"><span class="t-label">&nbsp;3 Controller ID</span><span class="t-val">F00000</span></div>
+        <div class="t-row"><span class="t-label">&nbsp;4 Robot No.</span><span class="t-val">F00000</span></div>
+        <div class="t-row"><span class="t-label">&nbsp;5 Manufacturing ID</span><span class="t-dim">—</span></div>
+        <div class="t-row"><span class="t-label">&nbsp;6 Default Personality</span><span class="t-dim">(from FD)</span></div>
+        <div class="t-row"><span class="t-label">&nbsp;7 R-2000iC/165F</span><span class="t-val">V9.10P/10</span></div>
+        <div class="t-row"><span class="t-label">&nbsp;8 Servo Code</span><span class="t-val">1234567890</span></div>
+        <div class="t-row"><span class="t-label">&nbsp;9 Cart. Mot. Parameter</span><span class="t-val">V3.00</span></div>
+        <div class="t-row"><span class="t-label">10 Joint Mot. Parameter</span><span class="t-val">V3.00</span></div>
+        <div class="t-row"><span class="t-label">11 DCS</span><span class="t-val">V4.2.4</span></div>
+        <div style="margin-top:.6rem;color:var(--dim);font-size:.72rem">[ TYPE ] SOFTWARE &nbsp; CONFIG &nbsp; MOTOR &nbsp; SERVO <span class="t-cursor">█</span></div>
+      </div>
+
+      <div class="sub-title">Installed Options (ORDER FI)</div>
+      <div class="terminal" style="border-color:var(--accent2)">
+        <div class="t-header" style="color:var(--accent2)">INSTALLED SOFTWARE OPTIONS</div>
+        <div style="color:var(--dim);font-size:.75rem;line-height:2">
+          <span style="color:var(--accent3)">1A05B-2600-H552</span> &nbsp;HandlingTool<br>
+          <span style="color:var(--accent3)">1A05B-2600-H521</span> &nbsp;English Dictionary<br>
+          <span style="color:var(--accent3)">1A05B-2600-R764</span> &nbsp;4D Graphics<br>
+          <span style="color:var(--accent3)">1A05B-2600-R796</span> &nbsp;Ascii Program Loader<br>
+          <span style="color:var(--accent3)">1A05B-2600-R507</span> &nbsp;Ascii Upload<br>
+          <span style="color:var(--accent3)">1A05B-2600-R641</span> &nbsp;PC Interface<br>
+          <span style="color:var(--accent3)">1A05B-2600-J669</span> &nbsp;Payload Ident.<br>
+          <span style="color:var(--accent3)">1A05B-2600-FVRC</span> &nbsp;Virtual Robot<br>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">9.7 — Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <div class="quiz-wrap reveal">
+    <div id="qC"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-logo">FANUC // CHAPTER 9 // ALARMS</div>
+  <p>MATAGHAND0318CE &nbsp;|&nbsp; FANUC America Corporation © Copyright 2020</p>
+  <p style="margin-top:.5rem;font-size:.6rem;opacity:.5">DO NOT DUPLICATE — For Training Use Only</p>
+</footer>
+
+<script>
+// ── PARTICLES ──
+(function(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<18;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${-Math.random()*15}s;--drift:${(Math.random()-.5)*120}px;opacity:0`;
+    if(Math.random()>.6)p.style.background='var(--accent2)';
+    if(Math.random()>.8)p.style.background='var(--accent3)';
+    c.appendChild(p);
+  }
+})();
+
+// ── PROGRESS BAR ──
+window.addEventListener('scroll',()=>{
+  const max=document.documentElement.scrollHeight-innerHeight;
+  document.getElementById('pb').style.width=(scrollY/max*100)+'%';
+});
+
+// ── REVEAL ON SCROLL ──
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('visible');if(e.target.classList.contains('steps'))animSteps(e.target);}
+  });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+
+const sr=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)animSteps(e.target);});
+},{threshold:.1});
+document.querySelectorAll('.steps').forEach(el=>sr.observe(el));
+
+function animSteps(container){
+  container.querySelectorAll('.step').forEach((s,i)=>{
+    setTimeout(()=>s.classList.add('visible'),i*150);
+  });
+}
+
+// ── ALARM SIMULATOR ──
+function selectAlarm(row, code, msg, cause, remedy){
+  document.querySelectorAll('.alarm-row').forEach(r=>r.classList.remove('selected'));
+  row.classList.add('selected');
+  const det=document.getElementById('alarmDetail');
+  document.getElementById('alarmCause').textContent='CAUSE: '+cause;
+  document.getElementById('alarmRemedy').textContent='REMEDY: '+remedy;
+  det.classList.add('show');
+}
+
+// ── HERO CANVAS — alarm indicator ──
+(function(){
+  const canvas=document.getElementById('heroC');
+  const ctx=canvas.getContext('2d');
+  const W=240,H=220;
+  let t=0;
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // Background panel
+    ctx.fillStyle='rgba(13,30,46,0.8)';
+    ctx.strokeStyle='rgba(255,107,0,0.4)';
+    ctx.lineWidth=1;
+    roundRect(ctx,20,20,200,180,6);ctx.fill();ctx.stroke();
+
+    // Header bar
+    ctx.fillStyle='rgba(255,107,0,0.15)';
+    roundRect(ctx,20,20,200,28,{tl:6,tr:6,bl:0,br:0});ctx.fill();
+    ctx.fillStyle='#ff6b00';
+    ctx.font='bold 9px "Share Tech Mono"';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('ALARM : ACTIVE',30,34);
+    // blink count
+    const a=Math.sin(t*.06)>.3?1:.3;
+    ctx.globalAlpha=a;
+    ctx.fillStyle='#ff3232';
+    ctx.textAlign='right';
+    ctx.fillText('4/4',210,34);
+    ctx.globalAlpha=1;
+
+    // Alarm rows
+    const alarms=[
+      {code:'SRVO-302',msg:'Set Hand broken to ENABLE',c:'#ff8888'},
+      {code:'INTP-105',msg:'(ZERO,1) Run request fail',c:'#ff8888'},
+      {code:'PROG-040',msg:'Already locked by other task',c:'#ff6b00'},
+      {code:'MOTN-017',msg:'Limit error (G:1, A:1)',c:'#ff8888'},
+    ];
+    alarms.forEach((al,i)=>{
+      const y=60+i*32;
+      if(i===Math.floor(t/40)%4){
+        ctx.fillStyle='rgba(0,212,255,0.06)';
+        ctx.fillRect(25,y-9,190,22);
+      }
+      // dot
+      ctx.beginPath();
+      ctx.arc(33,y+2,3,0,Math.PI*2);
+      ctx.fillStyle=al.c;
+      ctx.fill();
+      // code
+      ctx.fillStyle=al.c;
+      ctx.font='7.5px "Share Tech Mono"';
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillText(al.code,42,y+2);
+      // msg
+      ctx.fillStyle='rgba(200,221,232,0.7)';
+      ctx.font='7px "Share Tech Mono"';
+      ctx.fillText(al.msg.length>26?al.msg.slice(0,25)+'…':al.msg,42,y+12);
+    });
+
+    // Bottom bar
+    ctx.fillStyle='rgba(13,30,46,0.9)';
+    ctx.fillRect(20,182,200,18);
+    ctx.strokeStyle='rgba(26,58,92,0.8)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(20,182);ctx.lineTo(220,182);ctx.stroke();
+    const btns=['[TYPE]','[VIEW]','HIST','RES_1CH'];
+    btns.forEach((b,i)=>{
+      ctx.fillStyle='rgba(0,212,255,0.12)';
+      ctx.fillRect(25+i*48,185,44,12);
+      ctx.fillStyle='#00d4ff';
+      ctx.font='6px "Share Tech Mono"';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(b,47+i*48,191);
+    });
+
+    t++;
+    requestAnimationFrame(draw);
+  }
+
+  function roundRect(c,x,y,w,h,r){
+    if(typeof r==='number')r={tl:r,tr:r,br:r,bl:r};
+    c.beginPath();
+    c.moveTo(x+r.tl,y);
+    c.lineTo(x+w-r.tr,y);c.quadraticCurveTo(x+w,y,x+w,y+r.tr);
+    c.lineTo(x+w,y+h-r.br);c.quadraticCurveTo(x+w,y+h,x+w-r.br,y+h);
+    c.lineTo(x+r.bl,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r.bl);
+    c.lineTo(x,y+r.tl);c.quadraticCurveTo(x,y,x+r.tl,y);
+    c.closePath();
+  }
+  draw();
+})();
+
+// ── DCS CANVASES ──
+(function(){
+  function drawDCS(id, safe){
+    const canvas=document.getElementById(id);
+    const ctx=canvas.getContext('2d');
+    const W=160,H=90;
+    ctx.clearRect(0,0,W,H);
+
+    // boundary box
+    ctx.strokeStyle=safe?'rgba(0,255,136,0.4)':'rgba(255,50,50,0.6)';
+    ctx.setLineDash([4,3]);ctx.lineWidth=1.5;
+    ctx.strokeRect(20,15,120,60);
+    ctx.setLineDash([]);
+
+    // label
+    ctx.fillStyle=safe?'rgba(0,255,136,0.2)':'rgba(255,50,50,0.1)';
+    ctx.fillRect(20,15,120,60);
+    ctx.fillStyle=safe?'rgba(0,255,136,0.5)':'rgba(255,50,50,0.4)';
+    ctx.font='7px "Share Tech Mono"';
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('DCS BOUNDARY',80,18);
+
+    // robot dot
+    const rx=safe?80:155;
+    const ry=45;
+    ctx.beginPath();
+    ctx.arc(rx,ry,7,0,Math.PI*2);
+    ctx.fillStyle=safe?'#00ff88':'#ff3232';
+    ctx.shadowColor=safe?'#00ff88':'#ff3232';
+    ctx.shadowBlur=10;
+    ctx.fill();
+    ctx.shadowBlur=0;
+
+    // label
+    ctx.fillStyle=safe?'#00ff88':'#ff5555';
+    ctx.font='7px "Share Tech Mono"';
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    ctx.fillText(safe?'ROBOT':'ROBOT',rx,ry+18);
+  }
+  drawDCS('dcsOk',true);
+  drawDCS('dcsBad',false);
+})();
+
+// ── SINGULARITY CANVAS ──
+(function(){
+  const canvas=document.getElementById('singC');
+  const ctx=canvas.getContext('2d');
+  const W=320,H=200;
+  let t=0;
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // Axes
+    ctx.strokeStyle='rgba(26,58,92,0.8)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(40,H-30);ctx.lineTo(W-20,H-30);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(40,H-30);ctx.lineTo(40,15);ctx.stroke();
+
+    // Axis labels
+    ctx.fillStyle='var(--dim,#4a6a7a)';
+    ctx.font='9px "Share Tech Mono"';
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('J5 POSITION (degrees)',W/2+10,H-16);
+    ctx.save();ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('RISK LEVEL',0,0);ctx.restore();
+
+    // Danger zone
+    const cx=W/2+20;
+    const zoneW=40;
+    ctx.fillStyle='rgba(255,50,50,0.12)';
+    ctx.fillRect(cx-zoneW/2,15,zoneW,H-45);
+    ctx.strokeStyle='rgba(255,50,50,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(cx,15);ctx.lineTo(cx,H-30);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#ff5555';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('J5 ≈ 0°',cx,18);
+    ctx.fillText('SINGULARITY',cx,28);
+
+    // Risk curve
+    ctx.beginPath();
+    for(let x=45;x<W-20;x++){
+      const deg=((x-cx)/2.2);
+      const risk=(H-45)*Math.exp(-deg*deg/160);
+      const y=(H-30)-risk;
+      if(x===45)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle='#ff6b00';ctx.lineWidth=2.5;ctx.stroke();
+
+    // Safe zones
+    ctx.fillStyle='rgba(0,255,136,0.15)';
+    ctx.fillRect(40,15,cx-zoneW/2-40,H-45);
+    ctx.fillRect(cx+zoneW/2,15,W-20-(cx+zoneW/2),H-45);
+    ctx.fillStyle='rgba(0,255,136,0.6)';ctx.font='7px "Share Tech Mono"';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('SAFE',cx-80,H/2-5);
+    ctx.fillText('SAFE',cx+80,H/2-5);
+
+    // Animated J5 indicator
+    const angle=(Math.sin(t*.025)*160);
+    const ix=cx+(angle/1.3);
+    const ideg=((ix-cx)/2.2);
+    const irisk=(H-45)*Math.exp(-ideg*ideg/160);
+    const iy=(H-30)-irisk;
+    ctx.beginPath();ctx.arc(ix,iy,5,0,Math.PI*2);
+    const pct=irisk/(H-45);
+    ctx.fillStyle=`rgba(${Math.floor(255*pct)},${Math.floor(255*(1-pct*0.8))},${Math.floor(136*(1-pct))},0.9)`;
+    ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=8;
+    ctx.fill();ctx.shadowBlur=0;
+
+    t++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── QUIZ ──
+const Qs=[
+  {
+    q:'When a DCS error occurs, what two keys do you press to clear the fault?',
+    opts:['Reset and Enter','Shift and Reset','Shift and Diagnose','F4 and Reset'],
+    correct:1,
+    explain:'To recover from a DCS Position violation, press Shift and Reset together to clear the fault, then jog the robot away from the limit boundary.',
+    wrongExplain:'The correct combination is Shift + Reset. This clears the DCS position fault so you can then jog away from the limit.'
+  },
+  {
+    q:'What is the correct answer for recovering from a Singularity error?',
+    opts:['Move Joint 2 (+/-) 10 degrees','Move Joint 3 (+/-) 15 degrees','Move Joint 5 (+/-) 10 degrees','Move Joint 6 (+/-) 15 degrees'],
+    correct:2,
+    explain:'Singularity is caused when J5 approaches 0 degrees. The fix is to switch to Joint coordinate mode (COORD key), then jog Joint 5 (+/-) 10 degrees to break out of the singular configuration.',
+    wrongExplain:'Wrist singularity on a 6-axis FANUC robot occurs when J5 approaches 0 degrees. Moving Joint 5 (not J2, J3, or J6) by ±10 degrees resolves the condition.'
+  },
+  {
+    q:'The alarm screen shows all active alarms. The teach pendant title bar shows:',
+    opts:['All active alarms','The most recent alarm only','The highest severity alarm only','The oldest uncleared alarm'],
+    correct:1,
+    explain:'The teach pendant title bar only displays the most recent alarm. If multiple alarms are active, only the alarm log (Menu → 4 ALARM) reveals the complete list.',
+    wrongExplain:'The title bar always shows just the most recently triggered alarm. This is why navigating to the Alarm screen is the correct troubleshooting approach.'
+  },
+  {
+    q:'The Alarm History stores how many of the most recent alarms?',
+    opts:['50','74','100','200'],
+    correct:2,
+    explain:'The alarm history stores the 100 most recent alarms. It can also be sorted by alarm type to show the most recent 50 alarms of each specific type.',
+    wrongExplain:'The alarm history holds 100 total alarms. When sorted by type, you can see up to 50 of each alarm category.'
+  },
+  {
+    q:'What does the Robot F-Number identify?',
+    opts:['The program fault code','The unique robot identification including model, options, and sale information','The firmware version of the teach pendant','The payload schedule number currently active'],
+    correct:1,
+    explain:'The F-Number is a unique robot identifier that encodes controller type, robot model, installed options, and sale information. It is located at the robot base and on the controller cabinet, and is used when calling the FANUC support hotline.',
+    wrongExplain:'The F-Number is FANUC\'s unique robot identification system — it is not a fault code or software version. It contains hardware configuration and sales data specific to that individual robot.'
+  },
+  {
+    q:'A Single Chain Failure Detection fault is set when:',
+    opts:['Both safety chains are in E-Stop simultaneously','One safety chain is in E-Stop and the other is not','The teach pendant is disconnected from the controller','The DCS position limit is exceeded'],
+    correct:1,
+    explain:'A Chain Failure fault (SRVO-230 or SRVO-231) is triggered when one safety chain is in an Emergency Stop condition while the other is not — indicating a discrepancy in the dual-channel safety circuit.',
+    wrongExplain:'The dual-chain design requires both chains to agree. A fault occurs when they disagree — one is in E-Stop, the other is not. This mismatch signals a possible hardware failure in the safety circuit.'
+  },
+  {
+    q:'Where is fault diagnosis information (cause and remedy) accessed from?',
+    opts:['Only from the F-Number screen','By pressing Shift + DIAG on the selected alarm','By pressing F1 TYPE from the main menu','By cycling power and reading the startup log'],
+    correct:1,
+    explain:'To diagnose any fault, navigate to the alarm (active or history), place the cursor on the target alarm, and press Shift + DIAG together. This displays the possible cause and recommended remedy for that specific alarm.',
+    wrongExplain:'Shift + DIAG is the key combination that opens the diagnostic panel for the cursor-selected alarm. It works from both the active alarm screen and any history screen.'
+  },
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{el.classList.add('locked');if(idx===q.correct)el.classList.add('correct');else if(idx===i&&idx!==q.correct)el.classList.add('wrong');});
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent2);text-shadow:var(--glow2);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 9: Alarms.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

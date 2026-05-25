@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Jogging — Chapter 6</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;
+    --text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent),var(--accent2));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent);text-shadow:var(--glow)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2.5rem,8vw,6rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow),0 0 60px rgba(0,212,255,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(0,212,255,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(255,107,0,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem;filter:drop-shadow(0 0 8px rgba(0,212,255,.4))}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow);animation:pg 2s ease infinite}
+  .sdot.o{background:var(--accent2);box-shadow:var(--glow2)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  .cpanel{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;display:flex;flex-direction:column;align-items:center}
+  .clabel{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.15em;margin-bottom:.75rem;text-align:center;text-transform:uppercase}
+
+  /* Speed table */
+  .speed-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1.5rem}
+  .speed-table th{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.15em;color:var(--accent);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+  .speed-table td{padding:.7rem 1rem;border-bottom:1px solid rgba(26,58,92,.4);color:var(--text);transition:background .2s}
+  .speed-table tr:hover td{background:rgba(0,212,255,.04)}
+  .speed-table td:first-child{color:#fff;font-weight:600;font-family:'Share Tech Mono',monospace}
+
+  /* Speed slider */
+  .speed-demo{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem}
+  .speed-display{font-family:'Orbitron',sans-serif;font-size:3.5rem;font-weight:900;color:var(--accent);text-shadow:var(--glow);text-align:center;margin:1rem 0;transition:color .3s}
+  .speed-label{font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);text-align:center;letter-spacing:.15em;margin-bottom:1.5rem}
+  .speed-btns{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem}
+  .spd-btn{padding:.55rem 1rem;border-radius:3px;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:.72rem;cursor:pointer;transition:all .2s;letter-spacing:.05em}
+  .spd-btn:hover{border-color:var(--accent);color:var(--text)}
+  .spd-btn.active{border-color:var(--accent);background:rgba(0,212,255,.12);color:var(--accent)}
+  .spd-btn.fine{border-color:var(--accent3);color:var(--accent3)}.spd-btn.fine.active{background:rgba(0,255,136,.12)}
+  .speed-bar-wrap{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;height:8px;overflow:hidden;margin-top:.5rem}
+  .speed-bar-fill{height:100%;background:linear-gradient(to right,var(--accent3),var(--accent));border-radius:3px;transition:width .4s ease;box-shadow:var(--glow)}
+  .speed-desc{font-size:.85rem;color:var(--dim);line-height:1.7;margin-top:1rem;padding:1rem;background:rgba(0,0,0,.2);border-radius:3px;border-left:2px solid var(--accent);min-height:3rem}
+
+  /* Coord selector */
+  .coord-demo{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem}
+  .coord-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
+  .coord-tab{padding:.7rem 1.3rem;border-radius:3px;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--dim);font-family:'Orbitron',monospace;font-size:.72rem;cursor:pointer;transition:all .2s;letter-spacing:.08em}
+  .coord-tab:hover{border-color:var(--accent);color:var(--text)}
+  .coord-tab.active{border-color:var(--accent);background:rgba(0,212,255,.12);color:var(--accent)}
+  .coord-content{display:none;animation:fi .3s ease}
+  .coord-content.active{display:block}
+  @keyframes fi{from{opacity:0}to{opacity:1}}
+  .coord-desc{font-size:.9rem;color:var(--text);line-height:1.8;margin-bottom:1.2rem}
+
+  /* World frame directions */
+  .world-dirs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-top:1rem}
+  .dir-item{padding:.85rem 1rem;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;gap:.75rem;transition:all .2s}
+  .dir-item:hover{border-color:var(--accent)}
+  .dir-badge{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;min-width:2.5rem;color:var(--accent);text-shadow:var(--glow)}
+  .dir-badge.neg{color:var(--accent2);text-shadow:var(--glow2)}
+  .dir-text{font-size:.82rem;color:var(--dim);line-height:1.4}
+
+  /* Rotation table */
+  .rot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1rem}
+  .rot-card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;text-align:center;transition:all .3s}
+  .rot-card:hover{border-color:var(--accent);transform:translateY(-3px)}
+  .rot-name{font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:700;color:var(--accent);margin-bottom:.4rem}
+  .rot-symbol{font-family:'Orbitron',sans-serif;font-size:1.6rem;font-weight:900;color:#fff;margin-bottom:.4rem}
+  .rot-def{font-size:.82rem;color:var(--dim);line-height:1.5}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent);flex-shrink:0;box-shadow:var(--glow);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+
+  /* Position display */
+  .posn-display{background:#060e18;border:1px solid var(--accent);border-radius:4px;padding:1.5rem;font-family:'Share Tech Mono',monospace;font-size:.82rem;line-height:2}
+  .posn-header{color:var(--accent);font-size:.75rem;letter-spacing:.2em;margin-bottom:.5rem;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:.5rem}
+  .posn-row{display:flex;gap:2rem;flex-wrap:wrap;color:var(--text);margin:.3rem 0}
+  .posn-val{display:inline-block;min-width:120px}
+  .posn-key{color:var(--accent2)}
+  .posn-section{border:1px dashed rgba(0,212,255,.25);border-radius:3px;padding:.75rem 1rem;margin-top:.75rem}
+  .posn-section-label{color:var(--accent);font-size:.65rem;letter-spacing:.15em;margin-bottom:.4rem}
+  .posn-config{color:var(--dim);font-size:.78rem;margin:.3rem 0}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2.5rem}
+  .quiz-q{font-size:1.05rem;color:#fff;margin-bottom:1.4rem;line-height:1.65;font-weight:600}
+  .quiz-opts{display:flex;flex-direction:column;gap:.65rem}
+  .quiz-opt{padding:.88rem 1.2rem;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:.9rem;color:var(--text);transition:all .2s;display:flex;align-items:center;gap:.8rem}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent);color:#fff;background:rgba(0,212,255,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);background:rgba(0,255,136,.1);color:var(--accent3)}
+  .quiz-opt.wrong{border-color:#ff4444;background:rgba(255,68,68,.1);color:#ff8888}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.73rem;width:1.4rem;height:1.4rem;border-radius:2px;background:rgba(0,212,255,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;font-weight:700}
+  .quiz-fb{margin-top:1rem;font-family:'Share Tech Mono',monospace;font-size:.83rem;padding:.8rem 1rem;border-radius:3px;display:none;line-height:1.6}
+  .quiz-fb.show{display:block;animation:fi .3s ease}.quiz-fb.good{background:rgba(0,255,136,.1);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}.quiz-fb.bad{background:rgba(255,68,68,.1);color:#ff8888;border:1px solid rgba(255,68,68,.3)}
+  .quiz-nav{margin-top:1.4rem;display:flex;gap:1rem}
+  .qbtn{background:none;border:1px solid var(--border);color:var(--dim);padding:.6rem 1.2rem;border-radius:3px;cursor:pointer;font-family:'Exo 2',sans-serif;font-size:.85rem;transition:all .2s}
+  .qbtn.pri{background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)}.qbtn:hover{border-color:var(--accent);color:var(--text)}.qbtn.pri:hover{background:rgba(0,212,255,.2)}
+
+  footer{position:relative;z-index:10;padding:3rem 2rem;border-top:1px solid var(--border);text-align:center}
+  .foot-logo{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.3em;margin-bottom:1rem}
+  footer p{font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);letter-spacing:.1em}
+
+  @media(max-width:600px){nav{padding:.8rem 1rem}.nav-links{display:none}.section{padding:3rem 1rem}.rot-grid{grid-template-columns:1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+<div id="particles"></div>
+
+<nav>
+  <a href="#hero" class="nav-logo">FANUC // CH.06</a>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#speed">Jog Speed</a></li>
+    <li><a href="#coords">Coordinates</a></li>
+    <li><a href="#world">World Frame</a></li>
+    <li><a href="#procedure">Procedure</a></li>
+    <li><a href="#posdata">Position Data</a></li>
+    <li><a href="#quiz">Review</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool Training Module</div>
+  <h1><span>Jogging</span></h1>
+  <p class="hero-sub">Chapter 6 — Manually Moving the Robot</p>
+  <div class="hero-cw">
+    <canvas id="heroC" width="240" height="240" style="display:block;filter:drop-shadow(0 0 22px rgba(0,212,255,.45))"></canvas>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO BEGIN</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section reveal" id="overview">
+  <div class="sec-label">6.2 — Jogging Overview</div>
+  <h2 class="sec-title">What is Jogging?</h2>
+  <p style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">Jogging is manually moving the robot axes by pressing a sequence of keys on the iPendant. Before you can add a motion instruction to a teach pendant program, you must first jog the robot to the desired position. Two key concepts govern jogging:</p>
+  <div class="card-grid">
+    <div class="card reveal">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">Jog Speed</div>
+      <div class="card-body">Controls how fast the robot moves when jog keys are pressed. Expressed as a percentage of maximum speed, or as FINE/VFINE for incremental stepping. Always set a safe speed before moving.</div>
+    </div>
+    <div class="card reveal">
+      <div class="card-icon">🧭</div>
+      <div class="card-title">Coordinate System</div>
+      <div class="card-body">Defines how the robot moves when jogging. Options include Joint, World (XYZ), User Frame, Jog Frame, and Tool. Cartesian systems maintain a straight-line path at the tool center point.</div>
+    </div>
+    <div class="card reveal">
+      <div class="card-icon">🦺</div>
+      <div class="card-title">Safety First</div>
+      <div class="card-body">All personnel must be clear of the workcell. Mode switch must be in T1 or T2. DEADMAN switch must be held center. Release SHIFT or jog key at any time to stop immediately.</div>
+    </div>
+    <div class="card reveal">
+      <div class="card-icon">📍</div>
+      <div class="card-title">Position Data</div>
+      <div class="card-body">The POSITION screen (POSN key) displays live joint angles and Cartesian coordinates. Updated continuously as the robot moves. View only — data cannot be changed from this screen.</div>
+    </div>
+  </div>
+</section>
+
+<!-- JOG SPEED -->
+<section class="section" id="speed">
+  <div class="sec-label">6.2.1 — Jog Speed</div>
+  <h2 class="sec-title reveal">Jog Speed</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <div class="speed-demo">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);letter-spacing:.15em;margin-bottom:.5rem">INTERACTIVE — SELECT A SPEED VALUE</p>
+        <div class="speed-display" id="spdDisplay">10%</div>
+        <div class="speed-label" id="spdLabel">Continuous motion — 10% of maximum jog speed</div>
+        <div class="speed-btns">
+          <div class="spd-btn" onclick="setSpd('100')">100%</div>
+          <div class="spd-btn" onclick="setSpd('50')">50%</div>
+          <div class="spd-btn" onclick="setSpd('20')">20%</div>
+          <div class="spd-btn active" onclick="setSpd('10')">10%</div>
+          <div class="spd-btn" onclick="setSpd('5')">5%</div>
+          <div class="spd-btn" onclick="setSpd('1')">1%</div>
+          <div class="spd-btn fine" onclick="setSpd('FINE')">FINE</div>
+          <div class="spd-btn fine" onclick="setSpd('VFINE')">VFINE</div>
+        </div>
+        <div class="speed-bar-wrap"><div class="speed-bar-fill" id="spdBar" style="width:10%"></div></div>
+        <div class="speed-desc" id="spdDesc">Recommended starting speed. Use slow speeds until you are familiar with the robot — the slower the speed, the more control you have.</div>
+      </div>
+    </div>
+
+    <ul class="specs-list reveal">
+      <li class="spec-item">
+        <div class="sdot"></div>
+        <div class="spec-text"><strong>Percentage (%) — Continuous Motion</strong><span>The robot moves continuously while the jog key is held. Speed shown in the top-right corner of every iPendant screen. Ranges from 1% to 100%.</span></div>
+      </li>
+      <li class="spec-item">
+        <div class="sdot g"></div>
+        <div class="spec-text"><strong>FINE — Incremental Steps</strong><span>Joint: ~0.001° per step. Cartesian: ~0.023 mm per step. Robot moves one step per key press — must release and press again to move again.</span></div>
+      </li>
+      <li class="spec-item">
+        <div class="sdot g"></div>
+        <div class="spec-text"><strong>VFINE — Very Fine Incremental Steps</strong><span>Joint: ~0.0001° per step. Cartesian: ~0.002 mm per step. Extremely precise positioning. Must release and press again between steps.</span></div>
+      </li>
+      <li class="spec-item">
+        <div class="sdot o"></div>
+        <div class="spec-text"><strong>Adjusting Speed</strong><span>Press +% or −% to change in 5% increments. Hold SHIFT + +% or −% to step through: VFINE → FINE → 1% → 5% → 50% → 100%.</span></div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="reveal" style="margin-top:2rem">
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem">
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--accent);letter-spacing:.18em;margin-bottom:1rem">SPEED VALUES REFERENCE TABLE</p>
+      <table class="speed-table">
+        <thead><tr><th>SPEED VALUE</th><th>JOINT</th><th>CARTESIAN</th></tr></thead>
+        <tbody>
+          <tr><td>100, 95, 90 ... 5, 4, 3, 2, 1</td><td>% of jog speed</td><td>% of jog speed</td></tr>
+          <tr><td>FINE (incremental)</td><td>≈ 0.001 degrees</td><td>≈ 0.023 mm</td></tr>
+          <tr><td>VFINE (incremental)</td><td>≈ 0.0001 degrees</td><td>≈ 0.002 mm</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note-box"><div class="bi">ℹ️</div><div class="nt"><strong>NOTE:</strong> The maximum jog speed is defined by the TCP moving at or below 250 mm/sec. In T2 mode, if the DEADMAN switch is released, the override speed reverts to a limited value to ensure the robot cannot exceed 250 mm/sec when resumed.</div></div>
+  </div>
+</section>
+
+<!-- COORDINATE SYSTEMS -->
+<section class="section" id="coords">
+  <div class="sec-label">6.2.2–6.2.3 — Coordinate Systems</div>
+  <h2 class="sec-title reveal">Coordinate Systems</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:2rem">Press the <strong style="color:var(--accent)">COORD key</strong> on the iPendant to cycle through coordinate systems. The active system is displayed in the upper-right corner of the screen.</p>
+
+  <div class="coord-demo reveal">
+    <div class="coord-tabs">
+      <div class="coord-tab active" onclick="showCoord('joint',this)">JOINT</div>
+      <div class="coord-tab" onclick="showCoord('world',this)">WORLD (XYZ)</div>
+      <div class="coord-tab" onclick="showCoord('tool',this)">TOOL</div>
+      <div class="coord-tab" onclick="showCoord('user',this)">USER FRAME</div>
+    </div>
+
+    <div class="coord-content active" id="coord-joint">
+      <div class="two-col">
+        <div>
+          <div class="coord-desc">Joint jogging moves each individual axis of the robot independently — J1 through J6 — in a positive or negative direction. This is the <strong>most efficient jogging method</strong> because the processor does not need to calculate a linear path or maintain TCP position along a Cartesian plane.<br><br>Joint 2 movement automatically interacts with Joint 3 movement to maintain Joint 3 in the same orientation. Some robots have positive/negative directional markings directly on the mechanical unit for reference.</div>
+          <ul class="specs-list">
+            <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Most Efficient Method</strong><span>No complex path calculations required. Each axis moves independently — simple and predictable.</span></div></li>
+            <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>J2/J3 Interaction</strong><span>J2 and J3 movements are coordinated to keep J3 in the same orientation as J2 moves. This maintains tool orientation during shoulder movement.</span></div></li>
+            <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Best for Large Movements</strong><span>Use Joint mode to get the robot to a general area quickly. Switch to Cartesian for fine positioning.</span></div></li>
+          </ul>
+        </div>
+        <div class="cpanel">
+          <div class="clabel">Joint Jogging — Axis Assignments</div>
+          <canvas id="jointMapC" width="230" height="240" style="display:block;max-width:100%"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="coord-content" id="coord-world">
+      <div class="coord-desc">The World Frame is a <strong>fixed, default frame</strong> of the robot that cannot be changed. It is the basis for all taught positions and frames. On most FANUC serial-link robots, the World Frame origin is at the intersection of the center of the robot base with a plane level to the Joint 2 motor.<br><br>While jogging in WORLD, motion is <strong>linear</strong>. The robot coordinates all joints to maintain a straight-line path at the end-of-arm tooling, aligned to the World Coordinate System orientation.</div>
+      <div class="world-dirs">
+        <div class="dir-item"><div class="dir-badge">X+</div><div class="dir-text">Moves end-of-arm straight forward</div></div>
+        <div class="dir-item"><div class="dir-badge neg">X−</div><div class="dir-text">Moves end-of-arm straight back</div></div>
+        <div class="dir-item"><div class="dir-badge">Y+</div><div class="dir-text">Moves end-of-arm laterally to the left</div></div>
+        <div class="dir-item"><div class="dir-badge neg">Y−</div><div class="dir-text">Moves end-of-arm laterally to the right</div></div>
+        <div class="dir-item"><div class="dir-badge">Z+</div><div class="dir-text">Moves end-of-arm straight up</div></div>
+        <div class="dir-item"><div class="dir-badge neg">Z−</div><div class="dir-text">Moves end-of-arm straight down</div></div>
+        <div class="dir-item"><div class="dir-badge">W</div><div class="dir-text">Yaw — Rotation about the X axis</div></div>
+        <div class="dir-item"><div class="dir-badge">P</div><div class="dir-text">Pitch — Rotation about the Y axis</div></div>
+        <div class="dir-item"><div class="dir-badge">R</div><div class="dir-text">Roll — Rotation about the Z axis</div></div>
+      </div>
+    </div>
+
+    <div class="coord-content" id="coord-tool">
+      <div class="coord-desc">Tool frame jogging moves the robot relative to the <strong>Tool Center Point (TCP)</strong> and the active tool frame orientation. Motion directions are relative to the tool's own coordinate system — not the World frame. This is useful for approaching or retreating along the tool's approach direction, regardless of how the wrist is oriented.</div>
+      <ul class="specs-list" style="max-width:600px">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>TCP-Relative Motion</strong><span>Jog directions are aligned to the tool, not the world. Z+ typically moves along the tool's approach vector — useful for approaching a surface along the tool axis.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>Wrist Orientation Preserved</strong><span>When jogging linearly in tool frame, the TCP moves in a straight line relative to the tool frame orientation while all joints coordinate to maintain it.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="coord-content" id="coord-user">
+      <div class="coord-desc">User Frame (also includes Jog Frame) is a <strong>custom coordinate system</strong> defined by the operator to match a fixture, pallet, or work surface orientation. Once defined, jogging in User Frame moves the TCP relative to that custom frame — making it easier to align with parts that are not square to the World Frame.</div>
+      <ul class="specs-list" style="max-width:600px">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Fixture-Aligned Motion</strong><span>If a pallet is rotated 45° in the cell, a User Frame can be set to match it. Jogging X+ in that User Frame moves the TCP along the pallet's length.</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Part of XYZ Group</strong><span>User Frame, World, and Jog Frame are all part of the XYZ (Cartesian) coordinate group. All three use the same linear motion principles.</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right-hand rule -->
+  <div class="sub-title reveal">Right-Hand Rule</div>
+  <div class="two-col reveal">
+    <ul class="specs-list">
+      <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>What is the Right-Hand Rule?</strong><span>A mnemonic from mathematics and physics used to understand three-dimensional vector relationships. In robotics, it helps recall which direction each frame vector points.</span></div></li>
+      <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>FANUC Assignment</strong><span>Index finger = X axis. Middle finger = Y axis. Thumb = Z axis. Position your right hand with the index finger pointing toward the front of the robot (opposite the base cables) to recall World frame X, Y, and Z directions.</span></div></li>
+      <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Practical Use</strong><span>With the right hand correctly positioned: X points forward, Y points left, Z points up. This matches the World frame's default orientation on all FANUC serial-link robots.</span></div></li>
+    </ul>
+    <div class="cpanel">
+      <div class="clabel">Right-Hand Rule — Axis Orientation</div>
+      <canvas id="rhrC" width="230" height="200" style="display:block;max-width:100%"></canvas>
+    </div>
+  </div>
+
+  <!-- Rotations (W P R) -->
+  <div class="sub-title reveal">Wrist Rotations — W, P, R</div>
+  <p class="reveal" style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">Besides straight linear movements, you can also jog about a coordinate axis — rotating the end-of-arm tooling in place.</p>
+  <div class="rot-grid reveal">
+    <div class="rot-card">
+      <div class="rot-symbol">W</div>
+      <div class="rot-name">YAW</div>
+      <div class="rot-def">Rotation about the <strong style="color:var(--accent)">X axis</strong></div>
+    </div>
+    <div class="rot-card">
+      <div class="rot-symbol">P</div>
+      <div class="rot-name">PITCH</div>
+      <div class="rot-def">Rotation about the <strong style="color:var(--accent)">Y axis</strong></div>
+    </div>
+    <div class="rot-card">
+      <div class="rot-symbol">R</div>
+      <div class="rot-name">ROLL</div>
+      <div class="rot-def">Rotation about the <strong style="color:var(--accent)">Z axis</strong></div>
+    </div>
+  </div>
+</section>
+
+<!-- WORLD FRAME VISUAL -->
+<section class="section" id="world">
+  <div class="sec-label">6.2.5 — World Frame</div>
+  <h2 class="sec-title reveal">World Frame Detail</h2>
+  <div class="two-col">
+    <div class="cpanel reveal">
+      <div class="clabel">World Frame — Origin &amp; Axis Diagram</div>
+      <canvas id="worldC" width="280" height="280" style="display:block;max-width:100%"></canvas>
+    </div>
+    <ul class="specs-list reveal">
+      <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Fixed Default Frame</strong><span>The World Frame is built into the robot and cannot be modified. It is the foundation for all taught positions, user frames, and tool frames in the system.</span></div></li>
+      <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>Origin Location</strong><span>On most FANUC serial-link robots, the World Frame origin is at the intersection of the center of the robot base and a plane level to the Joint 2 motor.</span></div></li>
+      <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Position Representation</strong><span>Positions in World Frame are expressed as X, Y, Z (mm) for translation and W, P, R (degrees) for orientation — all relative to the World Frame origin.</span></div></li>
+      <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Linear Motion</strong><span>Jogging in World Frame produces straight-line motion. All six joints coordinate simultaneously to keep the TCP moving in a perfectly straight path.</span></div></li>
+    </ul>
+  </div>
+</section>
+
+<!-- PROCEDURE -->
+<section class="section" id="procedure">
+  <div class="sec-label">6.3 — Jogging the Robot</div>
+  <h2 class="sec-title reveal">Jogging Procedure</h2>
+
+  <div class="warn-box reveal">
+    <div class="bi">⚠️</div>
+    <div class="wt"><strong>WARNING:</strong> Make certain that all safety requirements for your workplace have been followed before jogging. Clear all personnel and unnecessary equipment from the workcell. Ensure all E-Stop and other faults are cleared. Mode switch must be in T1 or T2.</div>
+  </div>
+
+  <div class="two-col">
+    <div class="steps reveal" id="jogSteps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body"><strong>Enable the iPendant</strong><p>Turn the teach pendant ON/OFF switch to the ON position. This gives motion control to the operator.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><strong>Select Coordinate System</strong><p>Press the COORD key until the desired coordinate system (JOINT, WORLD, TOOL, etc.) appears in the upper right corner of the screen.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body"><strong>Set Jog Speed</strong><p>Press +% or −% until the desired speed appears in the upper right corner. Start slow — use 10% or less until you are comfortable with the robot's movement.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body"><strong>Hold the DEADMAN Switch</strong><p>Hold the iPendant firmly and press the DEADMAN switch on the back to the center position. Maintain this throughout all jogging.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body"><strong>Press SHIFT + Jog Key</strong><p>Hold SHIFT and press the jog key corresponding to the direction you want to move. Release the jog key (or SHIFT) to stop immediately.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body"><strong>Finish Jogging</strong><p>When finished, turn the teach pendant ON/OFF switch to OFF and release the DEADMAN switch.</p></div>
+      </div>
+    </div>
+
+    <ul class="specs-list reveal">
+      <li class="spec-item"><div class="sdot r"></div><div class="spec-text"><strong>Emergency Stop — Any Time</strong><span>Release the DEADMAN switch OR press the E-Stop button to stop the robot immediately at any point during jogging.</span></div></li>
+      <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>Stop by Releasing Keys</strong><span>Releasing the SHIFT key or the jog key causes the robot to stop — it will NOT continue to move after you release. Motion requires continuous key presses.</span></div></li>
+      <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>FINE/VFINE Stepping</strong><span>When FINE or VFINE speed is selected, the robot moves one step per key press. You must fully release and press again to take the next step.</span></div></li>
+      <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Pre-Jog Checklist</strong><span>✓ Workcell clear of personnel  ✓ E-Stop faults cleared  ✓ Fault light off  ✓ Mode in T1 or T2  ✓ Speed set to appropriate level</span></div></li>
+    </ul>
+  </div>
+</section>
+
+<!-- POSITION DATA -->
+<section class="section" id="posdata">
+  <div class="sec-label">6.4 — Positional Data</div>
+  <h2 class="sec-title reveal">Position Data Screen</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">The POSITION screen displays live positional information in both joint angles and Cartesian coordinates simultaneously. Updated continuously as the robot moves. <strong style="color:#fff">Display only</strong> — values cannot be edited here.</p>
+      <div class="note-box"><div class="bi">📍</div><div class="nt"><strong>To Access:</strong> Press the <strong>POSN key</strong> at the bottom of the iPendant, or navigate via Menu → Next → 4D Graphics → Position Display.</div></div>
+      <ul class="specs-list" style="margin-top:1.2rem">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Joint Section (Upper)</strong><span>Shows J1–J6 angles in degrees. Also displays the J2/J3 Interaction value, which is the compensation applied to maintain J3 orientation when J2 moves.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>Cartesian Section (Lower)</strong><span>Shows the TCP position in X, Y, Z (mm) and orientation in W, P, R (degrees) relative to the selected frame (World or User). Also shows the robot Configuration (NUT or FUT format).</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Switch Between Views</strong><span>Use the soft keys at the bottom — JNT (joint view), USER (user frame Cartesian), WORLD (world frame Cartesian) — to change what is displayed.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="reveal">
+      <div class="cpanel">
+        <div class="clabel">Position Screen — Live Display Simulation</div>
+        <canvas id="posnC" width="320" height="230" style="display:block;max-width:100%"></canvas>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--dim);margin-top:.6rem;text-align:center;letter-spacing:.1em">VALUES UPDATE AS ROBOT MOVES</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">6.5 — Chapter Review</div>
+  <h2 class="sec-title reveal">Test Your Knowledge</h2>
+  <div class="quiz-wrap reveal"><div id="qC"></div></div>
+</section>
+
+<footer>
+  <div class="foot-logo">FANUC AMERICA // JOGGING // CH.06</div>
+  <p>MATAGHAND0318CE &nbsp;|&nbsp; HandlingTool Training &nbsp;|&nbsp; © 2020 FANUC America Corporation</p>
+</footer>
+
+<script>
+// ── Particles ──
+const pc=document.getElementById('particles');
+for(let i=0;i<30;i++){const p=document.createElement('div');p.className='particle';p.style.left=Math.random()*100+'vw';p.style.animationDuration=(8+Math.random()*15)+'s';p.style.animationDelay=(Math.random()*15)+'s';p.style.setProperty('--drift',(Math.random()*80-40)+'px');if(Math.random()>.7){p.style.background='#ff6b00';p.style.width=p.style.height='3px';}pc.appendChild(p);}
+
+// ── Progress ──
+window.addEventListener('scroll',()=>{const t=window.scrollY,tot=document.body.scrollHeight-window.innerHeight;document.getElementById('pb').style.width=(t/tot*100)+'%';});
+
+// ── Reveal ──
+const rObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('visible');}),{threshold:.1,rootMargin:'0px 0px -50px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>rObs.observe(el));
+
+// ── Steps ──
+const sObs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.querySelectorAll('.step').forEach((s,i)=>setTimeout(()=>s.classList.add('visible'),i*140));});},{threshold:.1});
+const jogSteps=document.getElementById('jogSteps');if(jogSteps)sObs.observe(jogSteps);
+
+// ── RoundRect helper ──
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+
+function setupCanvas(id,w,h){const c=document.getElementById(id);if(!c)return null;const dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;c.style.width=w+'px';c.style.height=h+'px';const ctx=c.getContext('2d');ctx.scale(dpr,dpr);return ctx;}
+
+// ─────────────────────────────────────
+// HERO — animated robot jogging
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('heroC',240,240);if(!ctx)return;
+  const W=240,H=240;
+  let t=0,jogAngle=0,dir=1;
+
+  const joints=[
+    {x:120,y:215,r:12,color:'#00d4ff',label:'J1'},
+    {x:120,y:178,r:11,color:'#00d4ff',label:'J2'},
+    {x:95,y:128,r:10,color:'#00d4ff',label:'J3'},
+    {x:112,y:88,r:9,color:'#ff6b00',label:'J4'},
+    {x:140,y:58,r:8,color:'#ff6b00',label:'J5'},
+    {x:140,y:30,r:7,color:'#ff6b00',label:'J6'},
+  ];
+
+  function drawLink(ctx,x1,y1,x2,y2,thickness){
+    const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+    if(len===0)return;
+    const nx=-dy/len*thickness/2,ny=dx/len*thickness/2;
+    ctx.beginPath();ctx.moveTo(x1+nx,y1+ny);ctx.lineTo(x2+nx,y2+ny);ctx.lineTo(x2-nx,y2-ny);ctx.lineTo(x1-nx,y1-ny);ctx.closePath();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // Animated jog: J1 oscillates, showing jogging motion
+    jogAngle+=0.018*dir;
+    if(Math.abs(jogAngle)>0.35)dir*=-1;
+    const j1offset=Math.sin(jogAngle*2)*18;
+    const j=[
+      {x:120,y:215},{x:120+j1offset*0.4,y:178},{x:95+j1offset*0.8,y:128},
+      {x:112+j1offset,y:88},{x:140+j1offset*0.9,y:58},{x:140+j1offset*0.85,y:30},
+    ];
+
+    // Base
+    rr(ctx,90,228,60,14,4);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=2;ctx.stroke();
+    rr(ctx,78,234,84,8,2);ctx.fillStyle='#091828';ctx.fill();ctx.stroke();
+
+    // J1 rotation arc
+    ctx.save();ctx.translate(j[0].x,j[0].y);
+    ctx.beginPath();ctx.arc(0,0,26,Math.PI*.8,Math.PI*.2,true);
+    ctx.strokeStyle='rgba(0,212,255,.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+    ctx.restore();
+
+    // Links
+    [[0,1,18],[1,2,15],[2,3,12],[3,4,10],[4,5,8]].forEach(([a,b,thick])=>{
+      drawLink(ctx,j[a].x,j[a].y,j[b].x,j[b].y,thick);
+      ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.2;ctx.stroke();
+    });
+
+    // Tool tip
+    ctx.beginPath();ctx.moveTo(j[5].x,j[5].y-10);ctx.lineTo(j[5].x-7,j[5].y+2);ctx.lineTo(j[5].x+7,j[5].y+2);ctx.closePath();
+    ctx.fillStyle='#ff6b00';ctx.globalAlpha=.8;ctx.fill();ctx.globalAlpha=1;
+
+    // Motion trail from TCP
+    for(let i=0;i<6;i++){
+      const trail_x=j[5].x+Math.sin(t*2+i*.5)*3;
+      const trail_y=j[5].y-10-i*4;
+      ctx.beginPath();ctx.arc(trail_x,trail_y,1.5-i*.2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,212,255,${.7-i*.12})`;ctx.fill();
+    }
+
+    // Joints
+    j.forEach((jt,i)=>{
+      const color=i<3?'#00d4ff':'#ff6b00';
+      const r=joints[i].r;
+      ctx.beginPath();ctx.arc(jt.x,jt.y,r,0,Math.PI*2);
+      ctx.fillStyle='#091828';ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+      ctx.shadowColor=color;ctx.shadowBlur=6;
+      ctx.beginPath();ctx.arc(jt.x,jt.y,r*.38,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+      ctx.shadowBlur=0;
+      // Label
+      const side=i===1||i===2?'left':'right';
+      const lx=jt.x+(side==='right'?r+4:-(r+4));
+      ctx.fillStyle=color;ctx.font='bold 8px "Share Tech Mono"';ctx.textAlign=side==='right'?'left':'right';ctx.textBaseline='middle';
+      ctx.fillText(joints[i].label,lx,jt.y);
+    });
+
+    // COORD display
+    ctx.fillStyle='rgba(0,212,255,.15)';rr(ctx,155,8,75,20,3);ctx.fill();
+    ctx.strokeStyle='rgba(0,212,255,.5)';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='#00d4ff';ctx.font='bold 8px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('JOINT  10%',192,18);
+
+    // SHIFT key hint
+    ctx.fillStyle='rgba(0,255,136,.6)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    const blink=Math.sin(t*3)>0;
+    if(blink)ctx.fillText('SHIFT + JOG ►',8,230);
+
+    t+=.025;requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ─────────────────────────────────────
+// JOINT MAP CANVAS — key-to-axis labels
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('jointMapC',230,240);if(!ctx)return;
+  ctx.clearRect(0,0,230,240);
+
+  // Title
+  ctx.fillStyle='rgba(0,212,255,.4)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText('JOG KEY → AXIS MAPPING',115,14);
+
+  const rows=[
+    {key:'−X / +X',axis:'J1',desc:'Base rotation',color:'#00d4ff'},
+    {key:'−Y / +Y',axis:'J2',desc:'Shoulder swing',color:'#00d4ff'},
+    {key:'−Z / +Z',axis:'J3',desc:'Elbow / upper arm',color:'#00d4ff'},
+    {key:'−X̄ / +X̄',axis:'J4',desc:'Wrist roll',color:'#ff6b00'},
+    {key:'−Ȳ / +Ȳ',axis:'J5',desc:'Wrist pitch',color:'#ff6b00'},
+    {key:'−Z̄ / +Z̄',axis:'J6',desc:'Wrist yaw / flange',color:'#ff6b00'},
+  ];
+
+  rows.forEach((row,i)=>{
+    const y=28+i*34;
+    // Row bg
+    rr(ctx,6,y,218,28,3);
+    ctx.fillStyle=i%2===0?'rgba(0,0,0,.3)':'rgba(0,0,0,.15)';ctx.fill();
+    ctx.strokeStyle=row.color==='#00d4ff'?'rgba(0,212,255,.15)':'rgba(255,107,0,.15)';ctx.lineWidth=1;ctx.stroke();
+
+    // Key badge
+    rr(ctx,10,y+5,58,18,3);
+    ctx.fillStyle=row.color==='#00d4ff'?'rgba(0,212,255,.15)':'rgba(255,107,0,.15)';ctx.fill();
+    ctx.strokeStyle=row.color;ctx.lineWidth=.8;ctx.stroke();
+    ctx.fillStyle=row.color;ctx.font='bold 8px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(row.key.substring(0,7),39,y+14);
+
+    // Arrow
+    ctx.fillStyle='rgba(200,220,230,.3)';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('→',78,y+15);
+
+    // Axis badge
+    rr(ctx,86,y+5,28,18,3);
+    ctx.fillStyle=row.color==='#00d4ff'?'rgba(0,212,255,.2)':'rgba(255,107,0,.2)';ctx.fill();
+    ctx.strokeStyle=row.color;ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle=row.color;ctx.font='bold 9px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(row.axis,100,y+14);
+
+    // Description
+    ctx.fillStyle='rgba(200,220,230,.55)';ctx.font='8px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(row.desc,120,y+14);
+  });
+})();
+
+// ─────────────────────────────────────
+// RIGHT HAND RULE CANVAS
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('rhrC',230,200);if(!ctx)return;
+  const cx=115,cy=110;
+
+  // Axes
+  const axes=[
+    {dx:80,dy:0,color:'#00d4ff',label:'+X',sublabel:'INDEX\nFINGER'},
+    {dx:0,dy:-80,color:'#00ff88',label:'+Z',sublabel:'THUMB'},
+    {dx:-50,dy:40,color:'#ff6b00',label:'+Y',sublabel:'MIDDLE\nFINGER'},
+  ];
+
+  axes.forEach(ax=>{
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+ax.dx,cy+ax.dy);
+    ctx.strokeStyle=ax.color;ctx.lineWidth=3;ctx.stroke();
+    // Arrowhead
+    const angle=Math.atan2(ax.dy,ax.dx);
+    ctx.save();ctx.translate(cx+ax.dx,cy+ax.dy);ctx.rotate(angle);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-10,-5);ctx.lineTo(-10,5);ctx.closePath();
+    ctx.fillStyle=ax.color;ctx.fill();ctx.restore();
+    // Label
+    ctx.fillStyle=ax.color;ctx.font='bold 9px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(ax.label,cx+ax.dx*1.18,cy+ax.dy*1.18);
+    const lines=ax.sublabel.split('\n');
+    ctx.font='6.5px "Share Tech Mono"';ctx.fillStyle=ax.color+'99';
+    lines.forEach((l,i)=>ctx.fillText(l,cx+ax.dx*1.18,cy+ax.dy*1.18+12+i*9));
+  });
+
+  // Origin dot
+  ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='rgba(200,220,230,.5)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText('ORIGIN',cx,cy+18);
+
+  // Robot base hint
+  ctx.fillStyle='rgba(200,220,230,.25)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';
+  ctx.fillText('INDEX FINGER → FRONT OF ROBOT',cx,188);
+  ctx.fillText('(opposite base cables)',cx,198);
+})();
+
+// ─────────────────────────────────────
+// WORLD FRAME CANVAS
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('worldC',280,280);if(!ctx)return;
+  const cx=130,cy=160;
+
+  // Draw ground plane (XY)
+  ctx.save();
+  ctx.translate(cx,cy);
+  // XY plane parallelogram
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(80,20);ctx.lineTo(80,-30);ctx.lineTo(0,-50);ctx.closePath();
+  ctx.fillStyle='rgba(0,212,255,0.05)';ctx.fill();ctx.strokeStyle='rgba(0,212,255,0.2)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='rgba(0,212,255,0.2)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.fillText('XY Plane',60,-5);
+
+  // XZ plane
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-80);ctx.lineTo(-60,-60);ctx.lineTo(-60,20);ctx.closePath();
+  ctx.fillStyle='rgba(255,107,0,0.05)';ctx.fill();ctx.strokeStyle='rgba(255,107,0,0.15)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='rgba(255,107,0,0.25)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.fillText('YZ Plane',-40,-35);
+
+  // XZ plane
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(80,20);ctx.lineTo(80,-60);ctx.lineTo(0,-80);ctx.closePath();
+  ctx.fillStyle='rgba(0,255,136,0.04)';ctx.fill();ctx.strokeStyle='rgba(0,255,136,0.12)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='rgba(0,255,136,0.2)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.fillText('XZ Plane',55,-45);
+
+  // Axes
+  const axDefs=[
+    {dx:90,dy:20,color:'#00d4ff',label:'+X',neg:{dx:-70,dy:-16,label:'−X'}},
+    {dx:-70,dy:20,color:'#ff6b00',label:'+Y',neg:{dx:54,dy:-16,label:'−Y'}},
+    {dx:0,dy:-90,color:'#00ff88',label:'+Z',neg:{dx:0,dy:70,label:'−Z'}},
+  ];
+
+  axDefs.forEach(ax=>{
+    // Positive axis
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(ax.dx,ax.dy);
+    ctx.strokeStyle=ax.color;ctx.lineWidth=2.5;ctx.stroke();
+    const ang=Math.atan2(ax.dy,ax.dx);
+    ctx.save();ctx.translate(ax.dx,ax.dy);ctx.rotate(ang);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-9,-4);ctx.lineTo(-9,4);ctx.closePath();ctx.fillStyle=ax.color;ctx.fill();ctx.restore();
+    ctx.fillStyle=ax.color;ctx.font='bold 9px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(ax.label,ax.dx*1.15,ax.dy*1.15);
+    // Negative axis
+    if(ax.neg){
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(ax.neg.dx,ax.neg.dy);
+      ctx.strokeStyle=ax.color+'55';ctx.lineWidth=1.2;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=ax.color+'88';ctx.font='7px "Orbitron"';ctx.fillText(ax.neg.label,ax.neg.dx*1.18,ax.neg.dy*1.18);
+    }
+  });
+
+  // Origin
+  ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  ctx.restore();
+
+  // Robot base hint
+  rr(ctx,90,230,100,24,4);ctx.fillStyle='rgba(0,212,255,.08)';ctx.fill();ctx.strokeStyle='rgba(0,212,255,.3)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='rgba(0,212,255,.55)';ctx.font='6.5px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('WORLD FRAME ORIGIN',140,242);
+
+  // Label
+  ctx.fillStyle='rgba(200,220,230,.4)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='center';
+  ctx.fillText('Origin: Center of robot base',140,268);
+  ctx.fillText('level to Joint 2 motor',140,278);
+})();
+
+// ─────────────────────────────────────
+// POSITION SCREEN CANVAS — animated
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('posnC',320,230);if(!ctx)return;
+  let t=0;
+  const baseVals={j1:-16.820,j2:17.136,j3:-12.672,j4:-31.584,j5:-34.272,j6:-62.304,j23:4.464,x:2320.994,y:-507.511,z:556.943,w:48.591,p:10.990,r:-93.546};
+
+  function draw(){
+    ctx.clearRect(0,0,320,230);
+    // Screen background
+    rr(ctx,2,2,316,226,4);ctx.fillStyle='#060e18';ctx.fill();ctx.strokeStyle='#00d4ff';ctx.lineWidth=1;ctx.stroke();
+
+    // Status bar
+    ctx.fillStyle='#111a26';ctx.fillRect(4,4,312,18);
+    ctx.fillStyle='#ff5555';ctx.font='7px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('FAULT  SYST-178 SHIFT-RESET Pressed',8,13);
+    ctx.fillStyle='rgba(200,220,230,.5)';ctx.textAlign='right';
+    ctx.fillText('100',312,13);
+
+    // Mode bar
+    ctx.fillStyle='#0d1e2e';ctx.fillRect(4,22,312,14);
+    ctx.fillStyle='rgba(200,220,230,.4)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('SUB LINE 1',8,29);
+    rr(ctx,85,23,16,12,2);ctx.fillStyle='rgba(255,107,0,.7)';ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='6px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('T2',93,29);
+    ctx.fillStyle='rgba(200,220,230,.4)';ctx.textAlign='left';ctx.font='7px "Share Tech Mono"';
+    ctx.fillText('PAUSED  JOINT',104,29);
+
+    // POSITION header
+    ctx.fillStyle='#fff';ctx.font='bold 9px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillText('POSITION',8,50);
+
+    // Joint section box
+    rr(ctx,6,54,308,80,3);ctx.fillStyle='rgba(0,212,255,.04)';ctx.fill();ctx.strokeStyle='rgba(0,212,255,.2)';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='var(--accent)';ctx.fillStyle='#00d4ff';ctx.font='8px "Share Tech Mono"';ctx.textAlign='left';
+    ctx.fillText('Joint',10,67);ctx.textAlign='right';ctx.fillText('Tool:  1',310,67);
+
+    // In Degrees label
+    rr(ctx,115,58,90,14,2);ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill();ctx.strokeStyle='rgba(200,220,230,.2)';ctx.lineWidth=.8;ctx.stroke();
+    ctx.fillStyle='rgba(200,220,230,.6)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('In Degrees',160,65);
+
+    // Animated joint values
+    const jitter=Math.sin(t)*0.012;
+    const jv={j1:baseVals.j1+jitter*3,j2:baseVals.j2+jitter*2,j3:baseVals.j3+jitter*1.5,j4:baseVals.j4+jitter*2,j5:baseVals.j5+jitter*1.8,j6:baseVals.j6+jitter*2.5};
+
+    ctx.fillStyle='rgba(200,220,230,.85)';ctx.font='8px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillText(`J1:  ${jv.j1.toFixed(3)}  J2:  ${jv.j2.toFixed(3)}  J3:  ${jv.j3.toFixed(3)}`,10,84);
+    ctx.fillText(`J4:  ${jv.j4.toFixed(3)}  J5:  ${jv.j5.toFixed(3)}  J6:  ${jv.j6.toFixed(3)}`,10,98);
+    ctx.fillStyle='rgba(0,212,255,.7)';
+    ctx.fillText(`J2/J3 Interaction:  ${(baseVals.j23+jitter).toFixed(3)}`,10,113);
+
+    // Cartesian section box
+    rr(ctx,6,138,308,72,3);ctx.fillStyle='rgba(255,107,0,.03)';ctx.fill();ctx.strokeStyle='rgba(0,212,255,.2)';ctx.lineWidth=1;ctx.strokeStyle='rgba(200,220,230,.15)';ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#00d4ff';ctx.font='8px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillText('World',10,152);
+
+    rr(ctx,115,140,152,12,2);ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill();ctx.strokeStyle='rgba(200,220,230,.2)';ctx.lineWidth=.8;ctx.stroke();
+    ctx.fillStyle='rgba(200,220,230,.6)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('In mm (x,y,z), degrees (w,p,r)',191,146);
+
+    ctx.fillStyle='rgba(0,212,255,.6)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillText('Configuration: N U T, 0, 0, 0',10,165);
+
+    const cv={x:baseVals.x+jitter*5,y:baseVals.y+jitter*4,z:baseVals.z+jitter*3};
+    ctx.fillStyle='rgba(200,220,230,.85)';ctx.font='8px "Share Tech Mono"';
+    ctx.fillText(`x: ${cv.x.toFixed(3)}   y: ${baseVals.y.toFixed(3)}   z: ${cv.z.toFixed(3)}`,10,179);
+    ctx.fillText(`w: ${baseVals.w.toFixed(3)}   p: ${baseVals.p.toFixed(3)}   r: ${baseVals.r.toFixed(3)}`,10,193);
+
+    // Softkey bar
+    ctx.fillStyle='#0a1520';ctx.fillRect(4,210,312,16);
+    [['[TYPE]',50],['JNT',90],['USER',130],['WORLD',174]].forEach(([lbl,x])=>{
+      rr(ctx,x,212,lbl==='WORLD'?38:30,12,2);
+      ctx.fillStyle=lbl==='WORLD'?'rgba(0,212,255,.3)':'rgba(0,0,0,.3)';ctx.fill();
+      ctx.strokeStyle=lbl==='WORLD'?'#00d4ff':'rgba(200,220,230,.2)';ctx.lineWidth=.8;ctx.stroke();
+      ctx.fillStyle=lbl==='WORLD'?'#00d4ff':'rgba(200,220,230,.4)';ctx.font='6.5px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(lbl,x+(lbl==='WORLD'?19:15),218);
+    });
+
+    t+=.02;requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── Speed Demo ──
+const spdData={
+  '100':{pct:100,label:'Continuous motion — 100% of maximum jog speed',desc:'Maximum speed. Use only in open areas with no obstacles when you are very familiar with the robot\'s behavior. TCP speed ≤ 250 mm/sec.',color:'#ff4444'},
+  '50':{pct:50,label:'Continuous motion — 50% of maximum jog speed',desc:'Medium speed. Suitable for larger movements in a clear workcell after you are comfortable with the robot.',color:'#ff8c00'},
+  '20':{pct:20,label:'Continuous motion — 20% of maximum jog speed',desc:'Slower speed. Good for general jogging when learning robot behavior.',color:'#ffcc44'},
+  '10':{pct:10,label:'Continuous motion — 10% of maximum jog speed',desc:'Recommended starting speed. Use slow speeds until you are familiar with the robot — the slower the speed, the more control you have.',color:'#00d4ff'},
+  '5':{pct:5,label:'Continuous motion — 5% of maximum jog speed',desc:'Very slow. Useful for careful positioning near obstacles or tight clearances.',color:'#00d4ff'},
+  '1':{pct:1,label:'Continuous motion — 1% of maximum jog speed',desc:'Extremely slow continuous motion. For delicate positioning near fixtures or tooling.',color:'#00ff88'},
+  'FINE':{pct:0,label:'FINE — Incremental stepping (≈0.001° / ≈0.023 mm per step)',desc:'Robot moves one step per key press. Must release and press again to take another step. Use for precise positioning where exact location matters.',color:'#00ff88'},
+  'VFINE':{pct:0,label:'VFINE — Very fine incremental stepping (≈0.0001° / ≈0.002 mm per step)',desc:'Extremely precise incremental movement. One tiny step per key press. Used for micron-level positioning accuracy.',color:'#00ff88'},
+};
+
+function setSpd(val){
+  document.querySelectorAll('.spd-btn').forEach(b=>{b.classList.remove('active');if(b.textContent===val)b.classList.add('active');});
+  const d=spdData[val];
+  const disp=document.getElementById('spdDisplay');
+  const isInc=val==='FINE'||val==='VFINE';
+  disp.textContent=val+(isInc?'':' ');
+  disp.style.fontSize=isInc?'2rem':'3.5rem';
+  disp.style.color=d.color;
+  document.getElementById('spdLabel').textContent=d.label;
+  document.getElementById('spdDesc').textContent=d.desc;
+  document.getElementById('spdBar').style.width=isInc?'2%':d.pct+'%';
+  document.getElementById('spdBar').style.background=isInc?'linear-gradient(to right,#00ff88,#00ff88)':'linear-gradient(to right,var(--accent3),'+d.color+')';
+}
+
+// ── Coordinate Tabs ──
+function showCoord(id,btn){
+  document.querySelectorAll('.coord-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.coord-content').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');document.getElementById('coord-'+id).classList.add('active');
+}
+
+// ── QUIZ ──
+const Qs=[
+  {
+    q:'What key is depressed to switch between the different jog coordinate systems?',
+    opts:['POSN','MENU','FCTN','COORD'],
+    correct:3,
+    explain:'The COORD key cycles through the available coordinate systems (Joint, World, Tool, User). The active system is shown in the upper-right corner of the iPendant screen.',
+    wrongExplain:'The COORD key is used to switch coordinate systems. POSN shows position data, MENU opens the menu, and FCTN opens the function menu.'
+  },
+  {
+    q:'Assuming standard setup, if you jog the robot in World −Y, which direction will the TCP move?',
+    opts:['Straight out front','Up','To the robot\'s right','To the robot\'s left'],
+    correct:2,
+    explain:'In the World Frame, Y+ moves the TCP to the left (robot\'s perspective), so Y− moves it to the robot\'s right.',
+    wrongExplain:'In the World Frame: X+ = forward, X− = back, Y+ = left, Y− = right, Z+ = up, Z− = down. So World −Y moves the TCP to the robot\'s right.'
+  },
+  {
+    q:'If while jogging the robot you release the SHIFT key or jog key, what will happen?',
+    opts:['The robot will continue to move to the intended position','The robot will execute a controlled stop','The robot will execute an EMERGENCY STOP','These keys are not required to jog the robot'],
+    correct:1,
+    explain:'Releasing SHIFT or the jog key causes the robot to execute a controlled stop. Jogging requires continuous key presses — the robot stops the moment you release.',
+    wrongExplain:'Jogging is not an autonomous move — it requires continuous key presses. Releasing SHIFT or the jog key causes an immediate controlled stop. The E-Stop would require pressing the E-Stop button or releasing the DEADMAN.'
+  },
+  {
+    q:'What is the maximum jog speed defined by in terms of the robot\'s motion?',
+    opts:['100% of servo motor RPM','The Joint 1 rotation speed','TCP moving at and below 250 mm/sec','The robot controller processor speed'],
+    correct:2,
+    explain:'The maximum possible jog speed is defined by the Tool Center Point (TCP) moving at and below 250 millimeters per second.',
+    wrongExplain:'The maximum jog speed is defined by the TCP (Tool Center Point) moving at or below 250 mm/sec — this is the safety limit for manual operation.'
+  },
+  {
+    q:'Which jogging mode is the most efficient because the processor does not need to calculate a linear path?',
+    opts:['World Frame','Tool Frame','User Frame','Joint'],
+    correct:3,
+    explain:'Joint jogging is the most efficient because each axis moves independently — no complex path calculation or TCP maintenance is required.',
+    wrongExplain:'Joint jogging is the most efficient method. World, Tool, and User Frame jogging all require the processor to calculate linear paths and coordinate joints to maintain TCP motion.'
+  },
+  {
+    q:'When using FINE or VFINE speed, how does the robot move?',
+    opts:['Continuously while the key is held','In incremental steps — one step per key press','Faster than normal percentage speeds','In arcing motions around the TCP'],
+    correct:1,
+    explain:'FINE and VFINE cause the robot to move in incremental steps — one step per key press. You must release and press the key again to take another step.',
+    wrongExplain:'FINE and VFINE are incremental modes. Each press of the jog key moves the robot one small step (FINE: ~0.001°/~0.023mm, VFINE: ~0.0001°/~0.002mm). You must release and press again for each step.'
+  },
+  {
+    q:'What does W, P, R represent in Cartesian position data?',
+    opts:['Width, Pitch, Roll of the workspace','Yaw (rotation about X), Pitch (rotation about Y), Roll (rotation about Z)','The world frame X, Y, Z axes','Waypoint, Path, and Route program data'],
+    correct:1,
+    explain:'W = Yaw (rotation about X axis), P = Pitch (rotation about Y axis), R = Roll (rotation about Z axis). These define the tool orientation in Cartesian space.',
+    wrongExplain:'W, P, R define tool orientation: W = Yaw (rotation about X), P = Pitch (rotation about Y), R = Roll (rotation about Z). X, Y, Z in the same record define the TCP translation in mm.'
+  },
+];
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{el.classList.add('locked');if(idx===q.correct)el.classList.add('correct');else if(idx===i&&idx!==q.correct)el.classList.add('wrong');});
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){if(curQ<Qs.length-1){curQ++;renderQ();}else{document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem"><div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent);text-shadow:var(--glow);margin-bottom:1rem">✓</div><div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div><p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 6: Jogging.</p><button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button></div>`;}}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Branching — Chapter 15</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent2),var(--accent));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent2);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent2);text-shadow:var(--glow2)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent2);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow2),0 0 60px rgba(255,107,0,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent2)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(255,107,0,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(0,212,255,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent2);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent2),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent2),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent2);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent2);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow2);animation:pg 2s ease infinite}
+  .sdot.b{background:var(--accent);box-shadow:var(--glow)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}.sdot.p{background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.5)}.sdot.y{background:#facc15;box-shadow:0 0 12px rgba(250,204,21,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .info-box{background:rgba(255,107,0,.05);border:1px solid rgba(255,107,0,.25);border-left:3px solid var(--accent2);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+  .it{font-size:.85rem;color:#ffc080;line-height:1.7}.it strong{color:#ffe0c0}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  .terminal{background:#030a0f;border:1px solid var(--accent2);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .terminal.blue{border-color:var(--accent)}
+  .t-header{color:var(--accent2);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(255,107,0,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-header.blue{color:var(--accent);border-bottom-color:rgba(0,212,255,.2)}
+  .t-lbl{color:var(--accent)}.t-val{color:#fff}.t-ok{color:var(--accent3)}.t-warn{color:var(--accent2)}.t-dim{color:var(--dim)}
+
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent2),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent2);flex-shrink:0;box-shadow:var(--glow2);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+  .step-body .sub-step{margin-top:.4rem;padding:.4rem .7rem;background:rgba(0,212,255,.04);border-left:2px solid rgba(0,212,255,.2);font-size:.79rem;color:var(--dim);line-height:1.6}
+  .step-body .sub-step span{color:var(--accent2)}
+
+  /* Branch type cards */
+  .branch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+  .branch-card{border-radius:4px;padding:1.4rem;transition:transform .3s}
+  .branch-card:hover{transform:translateY(-3px)}
+  .branch-card.lbl{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .branch-card.unc{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .branch-card.cond{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .bc-abbr{font-family:'Orbitron',sans-serif;font-size:1.5rem;font-weight:900;margin-bottom:.3rem}
+  .branch-card.lbl .bc-abbr{color:var(--accent)}.branch-card.unc .bc-abbr{color:var(--accent2)}.branch-card.cond .bc-abbr{color:var(--accent3)}
+  .bc-name{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.08em}
+  .branch-card.lbl .bc-name{color:var(--accent)}.branch-card.unc .bc-name{color:var(--accent2)}.branch-card.cond .bc-name{color:var(--accent3)}
+  .bc-tag{font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:.1rem .35rem;border-radius:2px;display:inline-block;margin-bottom:.5rem;border:1px solid currentColor;opacity:.7}
+  .bc-body{font-size:.8rem;color:var(--dim);line-height:1.7}
+
+  /* Prog builder */
+  .prog-builder{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .prog-header{background:rgba(255,107,0,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .prog-name-display{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--accent2);letter-spacing:.15em}
+  .prog-body{padding:1rem 1.2rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;min-height:auto}
+  .pl{line-height:2.1;display:flex;gap:.6rem;align-items:center}
+  .pl-num{color:var(--dim);min-width:1.6rem;text-align:right;flex-shrink:0}
+  .pl-kw{color:var(--accent2)}.pl-lbl{color:var(--accent)}.pl-reg{color:#a78bfa}.pl-val{color:var(--accent3)}.pl-cond{color:#facc15}.pl-io{color:#facc15}.pl-end{color:var(--dim)}.pl-call{color:var(--accent2)}.pl-motion{color:var(--accent)}.pl-speed{color:var(--accent3)}.pl-pos{color:#a78bfa}
+
+  /* Interactive counter demo */
+  .counter-demo{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;margin-top:1rem}
+  .counter-display{display:flex;align-items:center;justify-content:center;gap:2rem;margin-bottom:1.2rem;flex-wrap:wrap}
+  .counter-reg{text-align:center}
+  .counter-reg .reg-label{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);letter-spacing:.2em;margin-bottom:.3rem}
+  .counter-reg .reg-val{font-family:'Orbitron',sans-serif;font-size:3rem;font-weight:900;color:var(--accent2);text-shadow:var(--glow2);line-height:1;transition:all .3s}
+  .counter-reg .reg-val.hit{color:var(--accent3);text-shadow:0 0 20px rgba(0,255,136,.6)}
+  .counter-btns{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}
+  .cbtn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.1em;padding:.5rem 1.1rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s}
+  .cbtn:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.07)}
+  .cbtn.run{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.07)}
+  .cbtn.run:hover{background:rgba(0,255,136,.12)}
+  .counter-log{margin-top:1rem;background:#030a0f;border:1px solid rgba(26,58,92,.5);border-radius:3px;padding:.8rem 1rem;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);min-height:80px;max-height:120px;overflow-y:auto;line-height:1.9}
+  .log-ok{color:var(--accent3)}.log-jmp{color:var(--accent)}.log-end{color:var(--accent2)}
+
+  /* Lab card */
+  .lab-card{background:var(--panel);border:1px solid rgba(0,255,136,.3);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+  .lab-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent3),transparent)}
+  .lab-num{font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--accent3);letter-spacing:.2em;margin-bottom:.3rem}
+  .lab-title{font-family:'Orbitron',sans-serif;font-size:1rem;color:#fff;margin-bottom:.8rem}
+  .lab-body{font-size:.85rem;color:var(--dim);line-height:1.8}
+  .lab-steps{margin-top:1rem;display:flex;flex-direction:column;gap:.4rem;padding-left:1.2rem}
+  .lab-steps li{font-size:.82rem;color:var(--dim);line-height:1.7}
+  .lab-steps li strong{color:var(--text)}
+  .lab-sub{margin-top:.3rem;padding-left:1.2rem;display:flex;flex-direction:column;gap:.25rem}
+  .lab-sub li{font-size:.8rem;color:var(--dim);line-height:1.6;list-style:lower-alpha}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem;margin-top:1rem}
+  .quiz-q{font-size:.98rem;color:#fff;font-weight:600;line-height:1.6;margin-bottom:1.5rem}
+  .quiz-opts{display:flex;flex-direction:column;gap:.75rem}
+  .quiz-opt{display:flex;align-items:center;gap:.9rem;padding:.9rem 1.1rem;background:#030a0f;border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .2s;font-size:.85rem;color:var(--dim)}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent2);color:#fff;background:rgba(255,107,0,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.06)}
+  .quiz-opt.wrong{border-color:#ff3232;color:#ff8888;background:rgba(255,50,50,.06)}
+  .quiz-opt.locked{cursor:default}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;width:1.6rem;height:1.6rem;border-radius:50%;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .quiz-fb{margin-top:1.2rem;font-size:.85rem;line-height:1.7;border-radius:3px;padding:0;max-height:0;overflow:hidden;transition:all .4s ease;opacity:0}
+  .quiz-fb.show{max-height:220px;padding:.9rem 1.1rem;opacity:1}
+  .quiz-fb.good{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.3);color:var(--accent3)}
+  .quiz-fb.bad{background:rgba(255,50,50,.07);border:1px solid rgba(255,50,50,.3);color:#ff8888}
+  .quiz-nav{margin-top:1.2rem;display:flex;gap:.8rem;justify-content:flex-end}
+  .qbtn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.5rem 1.2rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s}
+  .qbtn:hover,.qbtn.pri{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.08)}
+  .qbtn.pri{box-shadow:var(--glow2)}
+
+  /* IF/SELECT syntax diagram */
+  .syntax-box{background:#030a0f;border:1px solid var(--border);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.8rem;line-height:2;color:var(--text);overflow-x:auto;margin:1rem 0}
+  .sy-kw{color:var(--accent2)}.sy-var{color:#a78bfa}.sy-op{color:var(--accent3)}.sy-val{color:var(--accent)}.sy-act{color:#facc15}.sy-dim{color:var(--dim)}
+
+  @media(max-width:768px){nav .nav-links{display:none}.branch-grid{grid-template-columns:1fr 1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+
+<nav>
+  <a class="nav-logo" href="#">FANUC // CH.15</a>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#unconditional">Unconditional</a></li>
+    <li><a href="#registers">Registers</a></li>
+    <li><a href="#conditional">Conditional</a></li>
+    <li><a href="#wait">Wait</a></li>
+    <li><a href="#labs">Labs</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool — Chapter 15</div>
+  <h1>15: <span>Branching</span></h1>
+  <div class="hero-sub">Program Flow Control · Data Registers · Conditional Logic · Wait Instructions</div>
+  <div class="hero-cw">
+    <div class="terminal" style="min-width:340px;text-align:left">
+      <div class="t-header">PROGRAM FLOW EXAMPLE</div>
+      <div><span class="t-dim"> 1: </span><span class="t-val">LBL[1]</span></div>
+      <div><span class="t-dim"> 2: </span><span class="t-warn">R[1]=0</span></div>
+      <div><span class="t-dim"> 3: </span><span class="t-lbl">J PR[1:HOME] 100% FINE</span></div>
+      <div><span class="t-dim"> 4: </span><span class="t-warn">IF R[1]&lt;5, JMP LBL[1]</span></div>
+      <div><span class="t-dim"> 5: </span><span class="t-ok">R[1]=R[1]+1</span></div>
+      <div><span class="t-dim">   </span><span class="t-dim">[End]</span></div>
+    </div>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO EXPLORE ▼</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section" id="overview">
+  <div class="sec-label">15.1 / 15.2 — Overview</div>
+  <h2 class="sec-title reveal">Branching Instructions Overview</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">Branching instructions cause the program to <strong style="color:#fff">branch, or jump</strong>, from one place to another. By controlling where the cursor goes next, you control how the program executes. There are three fundamental kinds of branching instructions.</p>
+
+  <div class="branch-grid reveal">
+    <div class="branch-card lbl">
+      <div class="bc-abbr">LBL</div>
+      <div class="bc-name">Label Definition</div>
+      <div class="bc-tag">Destination Marker</div>
+      <div class="bc-body">Marks a location in the program that is the destination of a branch. Used with both conditional and unconditional branching instructions.</div>
+    </div>
+    <div class="branch-card unc">
+      <div class="bc-abbr">JMP / CALL</div>
+      <div class="bc-name">Unconditional</div>
+      <div class="bc-tag">Always Executes</div>
+      <div class="bc-body">Branches from one location to another every time it is executed regardless of any condition. Includes Jump (JMP LBL) and Sub-program call (CALL) instructions.</div>
+    </div>
+    <div class="branch-card cond">
+      <div class="bc-abbr">IF / SELECT</div>
+      <div class="bc-name">Conditional</div>
+      <div class="bc-tag">Condition-Dependent</div>
+      <div class="bc-body">Branches only when specified conditions are true. Includes IF statements and SELECT instructions that compare register values to determine which path to take.</div>
+    </div>
+  </div>
+
+  <!-- Label syntax -->
+  <div class="sub-title reveal">15.3 — Label Definition Instruction</div>
+  <p class="reveal" style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1rem">A label marks the destination of a program branch. After a label is defined, it can be referenced by any branching instruction.</p>
+  <div class="syntax-box reveal">
+    <span class="sy-kw">LBL</span>[<span class="sy-var">x</span>: <span class="sy-val">comment</span>]<br>
+    <span class="sy-dim">    ↑ Direct label number (integer)</span><br>
+    <span class="sy-dim">    ↑ Comment: up to 16 numbers, letters, spaces, ; : " ( ) * _ @</span>
+  </div>
+</section>
+
+<!-- UNCONDITIONAL -->
+<section class="section" id="unconditional">
+  <div class="sec-label">15.4 — Unconditional Branching</div>
+  <h2 class="sec-title reveal">Unconditional Branching</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Unconditional branching instructions always branch from one place to another whenever they are executed. There are two types: <strong style="color:var(--accent2)">JMP LBL</strong> and <strong style="color:var(--accent2)">CALL</strong>.</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">15.4.1 — Jump Instruction (JMP LBL)</div>
+      <ul class="specs-list">
+        <li class="spec-item">
+          <div class="sdot"></div>
+          <div class="spec-text">
+            <strong>Jumps within the current program</strong>
+            <span>JMP LBL[x] causes the cursor to jump to the named label within the same program. Can jump up or down. Typically jumps <em>up</em> when used as an unconditional branch (to create loops).</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot b"></div>
+          <div class="spec-text">
+            <strong>Matching label required</strong>
+            <span>The LBL[x] instruction must exist in the same program with the identical ID number as the JMP LBL[x] instruction.</span>
+          </div>
+        </li>
+      </ul>
+      <div class="sub-title">Procedure 15-1: Programming a Jump</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor, press F1 [INST]</strong><p>If F1 does not show [INST], press NEXT first.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Cursor to JMP/LBL → ENTER</strong><p>Navigate the instruction list to option 5: JMP/LBL.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose JMP LBL[ ]</strong><p>Select option 1 from the JMP statement sub-menu.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Enter label number on keypad</strong><p>Type the integer label number and press ENTER.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Add matching LBL[x] at destination</strong><p>Follow the same procedure but choose LBL[ ] instead. Give it the same number as the JMP LBL.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Example: Infinite Loop</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <div class="prog-name-display">FANUC_ACADEMY</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">6/13</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-lbl">J PR[1:HOME] 100% FINE</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span class="pl-lbl t-ok">LBL[1]</span></div>
+          <div class="pl"><span class="pl-num">6:</span><span class="pl-lbl">J P[1:Square] 100% CNT50</span></div>
+          <div class="pl"><span class="pl-num">7:</span><span class="pl-motion">L P[2] 6000cm/min CNT50</span></div>
+          <div class="pl"><span class="pl-num">8:</span><span class="pl-motion">L P[3] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">9:</span><span class="pl-motion">L P[2] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">10:</span><span class="pl-motion">L P[1:Square] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">11:</span><span class="pl-kw">JMP LBL[1]</span></div>
+          <div class="pl"><span class="pl-num">12:</span><span class="pl-lbl">J PR[1:HOME] 100% FINE</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+
+      <div class="sub-title">15.4.2 — CALL Instruction</div>
+      <ul class="specs-list">
+        <li class="spec-item">
+          <div class="sdot g"></div>
+          <div class="spec-text">
+            <strong>Branches to a remote sub-program</strong>
+            <span>CALL causes the program to jump to another program (sub-routine). Once that program finishes, execution automatically returns to the line immediately after the CALL — no return statement needed.</span>
+          </div>
+        </li>
+      </ul>
+      <div class="prog-builder" style="margin-top:1rem">
+        <div class="prog-header">
+          <div class="prog-name-display">MAIN</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">1/2</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1:</span><span class="pl-call">CALL FANUC_ACADEMY</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:.8rem">
+        <div class="bi">📌</div>
+        <div class="nt">It is <strong>not</strong> necessary to add a return statement in the called sub-program. The controller automatically returns when it reaches the program END.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA REGISTERS -->
+<section class="section" id="registers">
+  <div class="sec-label">15.5 — Data Registers</div>
+  <h2 class="sec-title reveal">Data Registers</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">A Data Register is a <strong style="color:#fff">storage space for a number</strong>. Registers can track part counts, speed values, cycle counts, timers, and more. Up to 999 registers are available (default 200), identified globally as <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">R[x]</span>.</p>
+
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent2);font-weight:900">R[x]</div>
+      <div class="card-title">Global Access</div>
+      <div class="card-body">Data Registers are accessible from any program in the controller, just like Position Registers. Changes made in one program persist across all others.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent);font-weight:900">=</div>
+      <div class="card-title">Direct Assignment</div>
+      <div class="card-body">Use <span style="font-family:'Share Tech Mono',monospace">R[3]=0</span> to set a register to a constant. The current value is replaced with the specified value.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent3);font-weight:900">±×÷</div>
+      <div class="card-title">Arithmetic Operations</div>
+      <div class="card-body">Supports +, −, ×, ÷, DIV (whole number division), and MOD (remainder). Mix only + and −, or only × and ÷ — not both groups in one instruction. Max 5 operators per instruction.</div>
+    </div>
+  </div>
+
+  <div class="sub-title reveal">Interactive Counter Simulator</div>
+  <p class="reveal" style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Simulate the register counter pattern: <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">R[1]=0</span> initializes, <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">R[1]=R[1]+1</span> increments each cycle, and <span style="font-family:'Share Tech Mono',monospace;color:var(--accent2)">IF R[1]&lt;5, JMP LBL[1]</span> controls the loop.</p>
+  <div class="counter-demo reveal">
+    <div class="counter-display">
+      <div class="counter-reg">
+        <div class="reg-label">R[1] — CYCLE COUNT</div>
+        <div class="reg-val" id="regVal">0</div>
+      </div>
+      <div class="counter-reg">
+        <div class="reg-label">MAX CYCLES</div>
+        <div style="display:flex;align-items:center;gap:.5rem;justify-content:center;margin-top:.2rem">
+          <button class="cbtn" onclick="changeMax(-1)" style="padding:.3rem .7rem">−</button>
+          <span style="font-family:'Orbitron',sans-serif;font-size:2rem;color:#fff;font-weight:700" id="maxVal">5</span>
+          <button class="cbtn" onclick="changeMax(1)" style="padding:.3rem .7rem">+</button>
+        </div>
+        <div class="reg-label" style="margin-top:.2rem">IF R[1] &lt; MAX → LOOP</div>
+      </div>
+    </div>
+    <div class="counter-btns">
+      <button class="cbtn" onclick="initReg()">R[1]=0 (INIT)</button>
+      <button class="cbtn run" onclick="stepCycle()">STEP ONE CYCLE</button>
+      <button class="cbtn run" onclick="runAll()">RUN ALL CYCLES</button>
+      <button class="cbtn" onclick="resetSim()">RESET</button>
+    </div>
+    <div class="counter-log" id="clog">// Program initialized. Press INIT or RUN to begin.<br></div>
+  </div>
+
+  <div class="sub-title reveal">Procedure 15-3 & 15-4: Programming Register Instructions</div>
+  <div class="two-col reveal">
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press F1 [INST] → Select Register</strong><p>Navigate to option 1: Registers from the instruction list.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Choose template: <span style="color:var(--accent2)">…=…</span> or <span style="color:var(--accent2)">…=…+…</span></strong><p>Select the assignment (=) template for direct value, or an arithmetic template for operations.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose R[ ] as register type</strong><p>Select Data Register (R[]) from the register type menu.</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Enter register number</strong><p>Type the register index (e.g., 1 for R[1]).</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Choose variable type: CONSTANT</strong><p>Select CONSTANT to assign or compare against a fixed number. For counters, select R[ ] and the same register to self-reference.</p></div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Enter the value</strong><p>Type the constant (e.g., 0 to initialize, 1 to increment by 1 per cycle).</p></div></div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Full Counter Program</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <div class="prog-name-display">FANUC_ACADEMY</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">5/16</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">R[1]=0</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Set to zero</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span style="color:var(--dim)"></span></div>
+          <div class="pl"><span class="pl-num">6:</span><span class="pl-lbl">J PR[1:HOME] 100% FINE</span></div>
+          <div class="pl"><span class="pl-num">7:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+          <div class="pl"><span class="pl-num">8:</span><span class="pl-lbl">J P[1:Square] 100% CNT50</span></div>
+          <div class="pl"><span class="pl-num">9:</span><span class="pl-motion">L P[2] 6000cm/min CNT50</span></div>
+          <div class="pl"><span class="pl-num">10:</span><span class="pl-motion">L P[3] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">11:</span><span class="pl-motion">L P[2] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">12:</span><span class="pl-motion">L P[1:Square] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">13:</span><span class="pl-kw">R[1]=R[1]+1</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Increment</span></div>
+          <div class="pl"><span class="pl-num">14:</span><span class="pl-kw">JMP LBL[1]</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Loop</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONDITIONAL BRANCHING -->
+<section class="section" id="conditional">
+  <div class="sec-label">15.6 — Conditional Branching</div>
+  <h2 class="sec-title reveal">Conditional Branching</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Conditional branching instructions branch from one place to another <strong style="color:#fff">only when certain conditions are true</strong>. There are two types: IF instructions and SELECT instructions.</p>
+
+  <!-- IF vs SELECT -->
+  <div class="two-col reveal" style="margin-bottom:3rem">
+    <div>
+      <div class="sub-title" style="margin-top:0">15.6.1 / 15.6.2 — IF Instructions</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.8;margin-bottom:1rem">An IF Instruction compares a register, I/O, or system variable to a value and takes an action if the comparison is <strong style="color:#fff">true</strong>. When false, execution continues on the next line.</p>
+      <ul class="specs-list">
+        <li class="spec-item">
+          <div class="sdot g"></div>
+          <div class="spec-text">
+            <strong>Action: JMP LBL[x]</strong>
+            <span>Jump to the specified label within the current program.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot"></div>
+          <div class="spec-text">
+            <strong>Action: CALL program</strong>
+            <span>Execute a sub-program and return to the next line.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot b"></div>
+          <div class="spec-text">
+            <strong>Condition sources</strong>
+            <span>Data Register R[x], I/O (DI/DO/RI/RO/SI/SO/UI/UO), Analog I/O (AI/AO), Group I/O (GI/GO), or System Variable ($-Parameter).</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot p"></div>
+          <div class="spec-text">
+            <strong>AND / OR operators</strong>
+            <span>Conditions can be chained with AND or OR (not mixed). Max 5 conditions per instruction.</span>
+          </div>
+        </li>
+      </ul>
+      <div class="syntax-box">
+        <span class="sy-dim">// IF with I/O</span><br>
+        <span class="sy-kw">IF</span> <span class="sy-var">DI[x]</span> <span class="sy-op">= / &lt;&gt;</span> <span class="sy-val">ON / OFF</span>, <span class="sy-act">JMP LBL[x]</span><br><br>
+        <span class="sy-dim">// IF with register</span><br>
+        <span class="sy-kw">IF</span> <span class="sy-var">R[x]</span> <span class="sy-op">= / &lt;&gt; / &lt; / &lt;= / &gt; / &gt;=</span> <span class="sy-val">value</span>, <span class="sy-act">CALL prog</span><br><br>
+        <span class="sy-dim">// IF with AND</span><br>
+        <span class="sy-kw">IF</span> <span class="sy-var">R[1]</span><span class="sy-op">=</span><span class="sy-val">1</span> <span class="sy-kw">AND</span> <span class="sy-var">DI[2]</span><span class="sy-op">=</span><span class="sy-val">ON</span>, <span class="sy-act">JMP LBL[2]</span>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">15.6.5 — SELECT Instructions</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.8;margin-bottom:1rem">A SELECT instruction compares a register to <strong style="color:#fff">multiple values</strong> and routes execution accordingly. An ELSE clause handles any value not explicitly listed.</p>
+      <div class="syntax-box">
+        <span class="sy-kw">SELECT</span> <span class="sy-var">R[x]</span> =<br>
+        &nbsp;&nbsp;<span class="sy-val">value1</span>, <span class="sy-act">CALL program / JMP LBL[x]</span><br>
+        &nbsp;&nbsp;<span class="sy-val">value2</span>, <span class="sy-act">CALL program / JMP LBL[x]</span><br>
+        &nbsp;&nbsp;<span class="sy-val">valueN</span>, <span class="sy-act">CALL program / JMP LBL[x]</span><br>
+        &nbsp;&nbsp;<span class="sy-kw">ELSE</span>, &nbsp;<span class="sy-act">JMP LBL[x]</span>
+      </div>
+      <div class="prog-builder" style="margin-top:1rem">
+        <div class="prog-header">
+          <div class="prog-name-display">MAIN</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">6/6</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+          <div class="pl"><span class="pl-num">2:</span><span class="pl-kw">SELECT R[1]=1,CALL SQUARE</span></div>
+          <div class="pl"><span class="pl-num">3:</span><span class="pl-kw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=2,CALL CIRCLE</span></div>
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=3,CALL TRIANGLE</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span class="pl-kw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE,JMP LBL[1]</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+      <div class="info-box" style="margin-top:.8rem">
+        <div class="bi">⚡</div>
+        <div class="it">The ELSE clause executes if none of the specified values match. You can only use a <strong>register value</strong> as the comparison source — SELECT cannot check I/O directly.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Procedure 15-5 -->
+  <div class="sub-title reveal">Procedure 15-5: Programming an IF Instruction</div>
+  <div class="two-col reveal">
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor, press F1 [INST]</strong><p>Position cursor at the desired line. Press NEXT if INST isn't shown.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Select IF/SELECT (option 3)</strong><p>Navigate the instruction menu to IF/SELECT and press ENTER.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose template (e.g., IF…&lt;…)</strong><p>Pick the operator template. It can be changed later by highlighting the operator and pressing F4 [CHOICE].</p><div class="sub-step">Available: <span>IF…=… / IF…&lt;&gt;… / IF…&lt;… / IF…&lt;=… / IF…&gt;… / IF…&gt;=…</span></div></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Choose variable type (R[ ], DI[ ], etc.)</strong><p>Select the condition source. For a cycle counter, choose R[ ].</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Enter register number and compare value</strong><p>Type the register index, then choose CONSTANT and enter the comparison value.</p></div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Select action: JMP LBL[ ] or CALL</strong><p>Choose the action that executes when the condition is true.</p></div></div>
+      <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Specify the label or program name</strong><p>Enter the target label number or select the sub-program from the list.</p></div></div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">5-Cycle Example with IF</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <div class="prog-name-display">FANUC_ACADEMY</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">5/16</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">R[1]=0</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span style="color:var(--dim)"></span></div>
+          <div class="pl"><span class="pl-num">6:</span><span class="pl-lbl">J PR[1:HOME] 100% FINE</span></div>
+          <div class="pl"><span class="pl-num">7:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+          <div class="pl"><span class="pl-num">8:</span><span class="pl-lbl">J P[1:Square] 100% CNT50</span></div>
+          <div class="pl"><span class="pl-num">9:</span><span class="pl-motion">L P[2] 6000cm/min CNT50</span></div>
+          <div class="pl"><span class="pl-num">10:</span><span class="pl-motion">L P[3] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">11:</span><span class="pl-motion">L P[2] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">12:</span><span class="pl-motion">L P[1:Square] 750mm/sec CNT50</span></div>
+          <div class="pl"><span class="pl-num">13:</span><span class="pl-kw">R[1]=R[1]+1</span></div>
+          <div class="pl"><span class="pl-num">14:</span><span class="pl-kw">IF R[1]&lt;5, JMP LBL[1]</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:.8rem">
+        <div class="bi">📌</div>
+        <div class="nt">When R[1] reaches 5 the condition <strong>IF R[1]&lt;5</strong> is false, so the jump does NOT execute and the program falls through to END — completing exactly 5 cycles.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WAIT INSTRUCTIONS -->
+<section class="section" id="wait">
+  <div class="sec-label">15.7 — Wait Instructions</div>
+  <h2 class="sec-title reveal">Wait Instructions</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Wait instructions <strong style="color:#fff">delay program execution</strong> for a specified time or until a condition is true. While waiting, the robot executes no motion instructions. There are two types:</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">15.7.1 — WAIT time</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.8;margin-bottom:1rem">Delays execution for a fixed duration. Time is specified in seconds with a minimum unit of 0.01 seconds.</p>
+      <div class="syntax-box">
+        <span class="sy-kw">WAIT</span> <span class="sy-val">time (sec)</span><br>
+        <span class="sy-dim">&nbsp;&nbsp;Direct:&nbsp;&nbsp; time in seconds (0.01 min)</span><br>
+        <span class="sy-dim">&nbsp;&nbsp;Indirect: R[x] (contents = time in sec)</span>
+      </div>
+      <div class="terminal" style="margin-top:1rem">
+        <div class="t-header">EXAMPLE</div>
+        <div><span class="t-warn">3: WAIT 1.00(sec)</span><span class="t-dim">  // 1-second pause</span></div>
+        <div><span class="t-warn">5: WAIT 0.50(sec)</span><span class="t-dim">  // Half-second pause</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">15.7.2 — WAIT condition</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.8;margin-bottom:1rem">Delays execution until specified conditions become true, or until a timeout expires.</p>
+      <ul class="specs-list">
+        <li class="spec-item">
+          <div class="sdot b"></div>
+          <div class="spec-text">
+            <strong>Forever (default)</strong>
+            <span>Program waits indefinitely until the condition is satisfied.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot y"></div>
+          <div class="spec-text">
+            <strong>TIMEOUT, LBL[i]</strong>
+            <span>If the condition isn't met within the timeout period, execution branches to the specified label.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot g"></div>
+          <div class="spec-text">
+            <strong>AND / OR operators</strong>
+            <span>Same rules as IF instructions — chain multiple conditions, max 5, no mixing AND and OR.</span>
+          </div>
+        </li>
+      </ul>
+      <div class="syntax-box" style="margin-top:1rem">
+        <span class="sy-kw">WAIT</span> <span class="sy-var">DI[1]</span><span class="sy-op">=</span><span class="sy-val">ON</span> <span class="sy-dim">Forever</span><br>
+        <span class="sy-kw">WAIT</span> <span class="sy-var">R[1]</span><span class="sy-op">&gt;=</span><span class="sy-val">10</span> <span class="sy-dim">Forever</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-title reveal">Full WAIT Example — Machine Ready Signal</div>
+  <div class="prog-builder reveal">
+    <div class="prog-header">
+      <div class="prog-name-display">FANUC_ACADEMY</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">14/15</div>
+    </div>
+    <div class="prog-body">
+      <div class="pl"><span class="pl-num">5:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+      <div class="pl"><span class="pl-num">6:</span><span class="pl-io">WAIT DI[1:Machine Ready]=ON</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// Waits here until DI is ON</span></div>
+      <div class="pl"><span class="pl-num">7:</span><span class="pl-lbl">J P[1:Square] 100% CNT50</span></div>
+      <div class="pl"><span class="pl-num">8:</span><span class="pl-motion">L P[2] 6000cm/min CNT50</span></div>
+      <div class="pl"><span class="pl-num">9:</span><span class="pl-motion">L P[3] 750mm/sec CNT50</span></div>
+      <div class="pl"><span class="pl-num">10:</span><span class="pl-motion">L P[2] 750mm/sec CNT50</span></div>
+      <div class="pl"><span class="pl-num">11:</span><span class="pl-motion">L P[1:Square] 750mm/sec CNT50</span></div>
+      <div class="pl"><span class="pl-num">12:</span><span class="pl-kw">R[1:Cycle Count]=R[1:Cycle Count]+1</span></div>
+      <div class="pl"><span class="pl-num">13:</span><span class="pl-kw">IF R[1:Cycle Count]&lt;5, JMP LBL[1]</span></div>
+      <div class="pl"><span class="pl-num">14:</span><span class="pl-lbl">J PR[1:HOME] 100% FINE</span></div>
+      <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- LABS -->
+<section class="section" id="labs">
+  <div class="sec-label">Labs 26–28</div>
+  <h2 class="sec-title reveal">Lab Exercises</h2>
+
+  <div class="lab-card reveal">
+    <div class="lab-num">LAB 26</div>
+    <div class="lab-title">Program with Branching — IF / WAIT</div>
+    <div class="lab-body">Create a program called MAIN1 that loops forever and conditionally calls sub-programs based on digital input signals.</div>
+    <ol class="lab-steps">
+      <li><strong>Create MAIN1</strong>
+        <ul class="lab-sub">
+          <li>Add LBL[1] at line 1 to anchor the loop</li>
+          <li>IF DI[2]=ON → CALL A_SQUARE</li>
+          <li>WAIT 1.00(sec)</li>
+          <li>IF DI[3]=ON → CALL A_CIRCLE</li>
+          <li>WAIT 1.00(sec)</li>
+          <li>IF DI[4]=ON → CALL A_TRIANGLE</li>
+          <li>JMP LBL[1] — returns to top</li>
+        </ul>
+      </li>
+      <li><strong>Verify</strong> — Confirm each DI triggers its associated program and execution loops continuously.</li>
+    </ol>
+    <div class="prog-builder" style="margin-top:1.2rem">
+      <div class="prog-header"><div class="prog-name-display">MAIN1</div></div>
+      <div class="prog-body">
+        <div class="pl"><span class="pl-num">1:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+        <div class="pl"><span class="pl-num">2:</span><span class="pl-kw">IF DI[2]=ON, CALL A_SQUARE</span></div>
+        <div class="pl"><span class="pl-num">3:</span><span class="pl-io">WAIT 1.00(sec)</span></div>
+        <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">IF DI[3]=ON, CALL A_CIRCLE</span></div>
+        <div class="pl"><span class="pl-num">5:</span><span class="pl-io">WAIT 1.00(sec)</span></div>
+        <div class="pl"><span class="pl-num">6:</span><span class="pl-kw">IF DI[4]=ON, CALL A_TRIANGLE</span></div>
+        <div class="pl"><span class="pl-num">7:</span><span class="pl-kw">JMP LBL[1]</span></div>
+        <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab-card reveal">
+    <div class="lab-num">LAB 27</div>
+    <div class="lab-title">Programming with Branching — SELECT</div>
+    <div class="lab-body">Create a program called MAIN2 that reads a Group Input and uses SELECT to route execution to one of several sub-programs.</div>
+    <ol class="lab-steps">
+      <li><strong>Create Group Input</strong> using DI[5–7]</li>
+      <li><strong>Create MAIN2</strong>
+        <ul class="lab-sub">
+          <li>LBL[1] at line 1</li>
+          <li>R[5]=GI[1] — capture group input value</li>
+          <li>SELECT R[5]=1,CALL A_SQUARE; =2,CALL A_CIRCLE; =3,CALL A_TRIANGLE; ELSE,JMP LBL[1]</li>
+        </ul>
+      </li>
+      <li><strong>Verify</strong> — Valid input (1–3) calls the associated program once and ends. Other values loop back.</li>
+    </ol>
+    <div class="prog-builder" style="margin-top:1.2rem">
+      <div class="prog-header"><div class="prog-name-display">MAIN2</div></div>
+      <div class="prog-body">
+        <div class="pl"><span class="pl-num">1:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+        <div class="pl"><span class="pl-num">2:</span><span class="pl-kw">R[5]=GI[1]</span></div>
+        <div class="pl"><span class="pl-num">3:</span><span class="pl-kw">SELECT R[5]=1,CALL A_SQUARE</span></div>
+        <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=2,CALL A_CIRCLE</span></div>
+        <div class="pl"><span class="pl-num">5:</span><span class="pl-kw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=3,CALL A_TRIANGLE</span></div>
+        <div class="pl"><span class="pl-num">6:</span><span class="pl-kw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ELSE, JMP LBL[1]</span></div>
+        <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab-card reveal">
+    <div class="lab-num">LAB 28</div>
+    <div class="lab-title">Register Instructions — Cycle Counter</div>
+    <div class="lab-body">Modify A_SQUARE into A_COUNTER so it runs exactly a predefined number of cycles, then stops.</div>
+    <ol class="lab-steps">
+      <li>Copy A_SQUARE → rename A_COUNTER</li>
+      <li>Assign a Data Register as the counter (e.g., R[1])</li>
+      <li>Initialize R[1]=0 before the main loop</li>
+      <li>Increment R[1]=R[1]+1 inside the loop</li>
+      <li>Use IF R[1]&lt;5, JMP LBL[1] to loop 5 times then exit</li>
+      <li>Verify program runs exactly 5 cycles and returns home</li>
+    </ol>
+    <div class="prog-builder" style="margin-top:1.2rem">
+      <div class="prog-header"><div class="prog-name-display">A_COUNTER</div></div>
+      <div class="prog-body">
+        <div class="pl"><span class="pl-num">4:</span><span class="pl-kw">R[1]=0</span></div>
+        <div class="pl"><span class="pl-num">6:</span><span class="pl-lbl">J PR[1] 100% FINE</span></div>
+        <div class="pl"><span class="pl-num">7:</span><span class="t-ok" style="font-family:'Share Tech Mono',monospace">LBL[1]</span></div>
+        <div class="pl"><span class="pl-num">9:</span><span class="pl-lbl">J P[1:Square] 100% CNT50</span></div>
+        <div class="pl"><span class="pl-num">10:</span><span class="pl-motion">L P[2] 6000cm/min CNT50</span></div>
+        <div class="pl"><span class="pl-num">13:</span><span class="pl-motion">L P[1:Square] 750mm/sec CNT50</span></div>
+        <div class="pl"><span class="pl-num">15:</span><span class="pl-kw">R[1]=R[1]+1</span></div>
+        <div class="pl"><span class="pl-num">16:</span><span class="pl-kw">IF R[1]&lt;5, JMP LBL[1]</span></div>
+        <div class="pl"><span class="pl-num">18:</span><span class="pl-lbl">J PR[1] 100% FINE</span></div>
+        <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">15.8 — Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <div class="quiz-wrap reveal">
+    <div id="qC"></div>
+  </div>
+</section>
+
+<footer style="position:relative;z-index:10;text-align:center;padding:3rem 2rem;border-top:1px solid var(--border)">
+  <div style="font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim)">FANUC AMERICA CORPORATION © 2020 — MATAGHAND0318CE — DO NOT DUPLICATE</div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:rgba(74,106,122,.5);margin-top:.5rem;letter-spacing:.15em">CHAPTER 15: BRANCHING — HANDLINGTOOL</div>
+</footer>
+
+<script>
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const s=document.documentElement,b=document.body;
+  const p=(s.scrollTop||b.scrollTop)/(s.scrollHeight-s.clientHeight)*100;
+  document.getElementById('pb').style.width=p+'%';
+});
+
+// Particles
+for(let i=0;i<18;i++){
+  const p=document.createElement('div');
+  p.className='particle';
+  p.style.cssText=`left:${Math.random()*100}%;animation-duration:${6+Math.random()*10}s;animation-delay:${Math.random()*6}s;--drift:${(Math.random()-.5)*120}px`;
+  document.body.appendChild(p);
+}
+
+// Reveal on scroll
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:.15});
+document.querySelectorAll('.reveal,.step').forEach(el=>ro.observe(el));
+
+// Counter sim
+let reg=0,maxCyc=5,running=false;
+function log(msg,cls=''){
+  const l=document.getElementById('clog');
+  l.innerHTML+=`<span class="${cls}">${msg}</span><br>`;
+  l.scrollTop=l.scrollHeight;
+}
+function updateReg(){
+  const el=document.getElementById('regVal');
+  el.textContent=reg;
+  if(reg>=maxCyc){el.classList.add('hit');}else{el.classList.remove('hit');}
+}
+function initReg(){reg=0;updateReg();log(`→ R[1]=0  (initialized)`,'log-ok');}
+function stepCycle(){
+  if(reg>=maxCyc){log(`✗ R[1]=${reg} — condition IF R[1]<${maxCyc} is FALSE. Program ends.`,'log-end');return;}
+  reg++;updateReg();
+  log(`  Cycle complete → R[1]=R[1]+1 → R[1]=${reg}`,'log-ok');
+  if(reg<maxCyc){log(`  IF R[1]<${maxCyc} is TRUE → JMP LBL[1] (loop)`,'log-jmp');}
+  else{log(`✓ IF R[1]<${maxCyc} is FALSE → program falls through [End]`,'log-end');}
+}
+async function runAll(){
+  if(running)return;running=true;
+  reg=0;updateReg();
+  document.getElementById('clog').innerHTML='';
+  log('→ R[1]=0 (initialized)','log-ok');
+  for(let i=0;i<maxCyc;i++){
+    await new Promise(r=>setTimeout(r,420));
+    reg++;updateReg();
+    log(`  Cycle ${i+1}: R[1]=R[1]+1 → R[1]=${reg}`,'log-ok');
+    if(i<maxCyc-1)log(`  IF R[1]<${maxCyc} TRUE → JMP LBL[1]`,'log-jmp');
+  }
+  await new Promise(r=>setTimeout(r,300));
+  log(`✓ IF R[1]<${maxCyc} FALSE — ${maxCyc} cycles complete. [End]`,'log-end');
+  running=false;
+}
+function changeMax(d){maxCyc=Math.max(1,Math.min(20,maxCyc+d));document.getElementById('maxVal').textContent=maxCyc;if(reg>=maxCyc)updateReg();}
+function resetSim(){reg=0;maxCyc=5;document.getElementById('maxVal').textContent=5;updateReg();document.getElementById('clog').innerHTML='// Reset. Press INIT or RUN to begin.<br>';}
+
+// Quiz
+const Qs=[
+  {
+    q:'What instruction will send program flow to a sub-program?',
+    opts:['JMP LBL','CALL','IF','SELECT'],
+    correct:1,
+    explain:'CALL causes the program to branch to a remote sub-program. Once the sub-program reaches its END, control automatically returns to the line immediately following the CALL instruction.',
+    wrongExplain:'JMP LBL jumps to a label within the current program. IF and SELECT are conditional instructions, not ones that send control to another program by themselves.'
+  },
+  {
+    q:'What are the two possible actions of an IF/SELECT statement?',
+    opts:['Select & Set an output','Set an Output & CALL','JMP LBL & CALL','JMP LBL & WAIT'],
+    correct:2,
+    explain:'When an IF or SELECT condition is true, the only possible actions are JMP LBL (jump to a label in the current program) or CALL (branch to a sub-program). No other actions are available.',
+    wrongExplain:'Setting outputs requires separate I/O instructions. WAIT is its own category of instruction and cannot be the action of an IF or SELECT condition.'
+  },
+  {
+    q:'Which instruction would increment Data Register 10 (R[10]) by two (2)?',
+    opts:['R[10]=2','R[10]++','R[10]=R[10]+2','R[10]+2'],
+    correct:2,
+    explain:'The correct syntax is R[10]=R[10]+2. This reads the current value of R[10], adds 2 to it, and stores the result back in R[10]. Each execution increases the value by 2.',
+    wrongExplain:'R[10]=2 sets the register to 2, not increments it. R[10]++ and R[10]+2 are not valid FANUC TP syntax. Only the full arithmetic expression R[10]=R[10]+2 works.'
+  },
+  {
+    q:'What happens when the condition in an IF instruction is NOT satisfied?',
+    opts:['The program stops','The program branches to a default label','The action is skipped and execution continues on the next line','The robot returns to home position'],
+    correct:2,
+    explain:'When an IF condition is false, the action (JMP or CALL) is simply not executed. Program execution continues normally on the very next line of the program.',
+    wrongExplain:'The program does not stop, branch elsewhere, or trigger any motion. It simply moves to the next instruction as if the IF line were not there.'
+  },
+  {
+    q:'What is the maximum number of arithmetic operators allowed in a single register instruction?',
+    opts:['2','3','5','Unlimited'],
+    correct:2,
+    explain:'A maximum of 5 arithmetic operators can be used in a single register instruction. Additionally, you can only mix + and − together OR × and ÷ together — you cannot combine both groups in one instruction.',
+    wrongExplain:'FANUC TP supports up to 5 operators per instruction. Mixing + and × in the same instruction is not allowed regardless of the count.'
+  },
+  {
+    q:'What does the ELSE clause do in a SELECT instruction?',
+    opts:['It runs before any condition is checked','It executes if the register value matches any one of the listed values','It executes if the register value does NOT match any of the specified values','It causes the program to stop'],
+    correct:2,
+    explain:'The ELSE clause is a catch-all that executes its associated action (JMP LBL or CALL) when the register value does not equal any of the explicitly listed values in the SELECT instruction.',
+    wrongExplain:'ELSE does not run first or when a match is found. It only fires when no match is found among the listed values.'
+  },
+  {
+    q:'How many Data Registers are available in the FANUC controller (default)?',
+    opts:['100','200','500','999'],
+    correct:1,
+    explain:'Up to 999 Data Registers are available across all programs in the controller, but the default number configured is 200. Registers are globally accessible and identified as R[x].',
+    wrongExplain:'The maximum is 999 but the default out-of-the-box configuration provides 200 Data Registers. They are shared globally across all programs.'
+  },
+  {
+    q:'What is the minimum time unit for a WAIT time instruction?',
+    opts:['0.001 seconds','0.01 seconds','0.1 seconds','1 second'],
+    correct:1,
+    explain:'The WAIT time instruction specifies time in seconds with a minimum unit of 0.01 seconds (10 milliseconds). For example, WAIT 0.01(sec) is the shortest possible timed wait.',
+    wrongExplain:'0.001 sec (1ms) is below the minimum resolution. 0.1 or 1 second are valid but not the minimum. The controller supports increments as small as 0.01 seconds.'
+  }
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{
+    el.classList.add('locked');
+    if(idx===q.correct)el.classList.add('correct');
+    else if(idx===i&&idx!==q.correct)el.classList.add('wrong');
+  });
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent2);text-shadow:var(--glow2);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 15: Branching.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

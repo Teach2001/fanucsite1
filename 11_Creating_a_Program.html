@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Creating a Program — Chapter 11</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent2),var(--accent));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent2);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent2);text-shadow:var(--glow2)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent2);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow2),0 0 60px rgba(255,107,0,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent2)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(255,107,0,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(0,212,255,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent2);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent2),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent2),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent2);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent2);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow2);animation:pg 2s ease infinite}
+  .sdot.b{background:var(--accent);box-shadow:var(--glow)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .info-box{background:rgba(255,107,0,.05);border:1px solid rgba(255,107,0,.25);border-left:3px solid var(--accent2);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+  .it{font-size:.85rem;color:#ffc080;line-height:1.7}.it strong{color:#ffe0c0}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  /* Motion instruction anatomy */
+  .motion-anatomy{display:flex;align-items:stretch;gap:0;background:#030a0f;border:1px solid var(--border);border-radius:4px;overflow:hidden;font-family:'Orbitron',sans-serif;font-size:clamp(1.4rem,4vw,2.5rem);font-weight:900}
+  .mot-seg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:.8rem .4rem;border-right:1px solid var(--border);position:relative;transition:background .2s}
+  .mot-seg:last-child{border-right:none}
+  .mot-seg:hover{background:rgba(255,255,255,.04)}
+  .mot-seg .val{letter-spacing:.05em}
+  .mot-seg .lbl{font-family:'Share Tech Mono',monospace;font-size:.58rem;color:var(--dim);letter-spacing:.1em;margin-top:.4rem;text-align:center}
+  .seg-j{color:var(--accent2)}.seg-p{color:var(--accent)}.seg-s{color:var(--accent3)}.seg-t{color:#a78bfa}
+
+  /* Terminal */
+  .terminal{background:#030a0f;border:1px solid var(--accent2);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .terminal.blue{border-color:var(--accent)}
+  .t-header{color:var(--accent2);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(255,107,0,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-header.blue{color:var(--accent);border-bottom-color:rgba(0,212,255,.2)}
+  .t-lbl{color:var(--accent)}.t-val{color:#fff}.t-dim{color:var(--dim)}.t-ok{color:var(--accent3)}.t-warn{color:var(--accent2)}
+  .t-row{display:flex;justify-content:space-between;gap:1rem}
+  .t-cursor{animation:blink .8s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .t-line{color:var(--text);line-height:2}
+  .t-line span.num{color:var(--dim);min-width:1.5rem;display:inline-block}
+  .t-line span.kw{color:var(--accent2)}
+  .t-line span.pos{color:var(--accent)}
+  .t-line span.end{color:var(--dim)}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent2),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent2);flex-shrink:0;box-shadow:var(--glow2);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+
+  /* Sub-type cards */
+  .subtype-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+  .subtype-card{border-radius:4px;padding:1.5rem;transition:transform .3s}
+  .subtype-card:hover{transform:translateY(-4px)}
+  .subtype-card.tp{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .subtype-card.mr{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .subtype-card.ch{background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.35)}
+  .subtype-card.co{background:rgba(100,100,100,.06);border:1px solid rgba(100,100,100,.35)}
+  .st-ext{font-family:'Share Tech Mono',monospace;font-size:1.6rem;font-weight:700;margin-bottom:.3rem}
+  .subtype-card.tp .st-ext{color:var(--accent)}.subtype-card.mr .st-ext{color:var(--accent2)}.subtype-card.ch .st-ext{color:#a78bfa}.subtype-card.co .st-ext{color:var(--dim)}
+  .st-name{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;margin-bottom:.4rem}
+  .subtype-card.tp .st-name{color:var(--accent)}.subtype-card.mr .st-name{color:var(--accent2)}.subtype-card.ch .st-name{color:#a78bfa}.subtype-card.co .st-name{color:var(--dim)}
+  .st-badge{font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:.12rem .4rem;border-radius:2px;display:inline-block;margin-bottom:.5rem}
+  .subtype-card.tp .st-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+  .subtype-card.mr .st-badge{background:rgba(255,107,0,.12);color:var(--accent2);border:1px solid rgba(255,107,0,.3)}
+  .subtype-card.ch .st-badge{background:rgba(139,92,246,.12);color:#a78bfa;border:1px solid rgba(139,92,246,.3)}
+  .subtype-card.co .st-badge{background:rgba(100,100,100,.12);color:var(--dim);border:1px solid rgba(100,100,100,.3)}
+  .st-body{font-size:.8rem;color:var(--dim);line-height:1.7}
+
+  /* Test mode comparison */
+  .test-compare{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0}
+  @media(max-width:600px){.test-compare{grid-template-columns:1fr}}
+  .test-card{border-radius:4px;padding:1.6rem}
+  .test-card.step{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .test-card.cont{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .test-card.auto{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .test-title{font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:700;margin-bottom:.8rem}
+  .test-card.step .test-title{color:var(--accent)}.test-card.cont .test-title{color:var(--accent3)}.test-card.auto .test-title{color:var(--accent2)}
+  .test-body{font-size:.82rem;color:var(--dim);line-height:1.7}
+  .test-badge{font-family:'Share Tech Mono',monospace;font-size:.6rem;padding:.12rem .4rem;border-radius:2px;display:inline-block;margin-bottom:.6rem}
+  .test-card.step .test-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+  .test-card.cont .test-badge{background:rgba(0,255,136,.12);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}
+  .test-card.auto .test-badge{background:rgba(255,107,0,.12);color:var(--accent2);border:1px solid rgba(255,107,0,.3)}
+
+  /* Program detail table */
+  .detail-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:1rem}
+  .detail-table th{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:.18em;color:var(--accent2);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+  .detail-table td{padding:.75rem 1rem;border-bottom:1px solid rgba(26,58,92,.4);color:var(--text);vertical-align:top;transition:background .2s}
+  .detail-table tr:hover td{background:rgba(255,107,0,.04)}
+  .detail-table td:first-child{color:#fff;font-weight:600;font-family:'Share Tech Mono',monospace;white-space:nowrap}
+  .detail-table td:nth-child(2){color:var(--accent2)}
+
+  /* Interactive program builder */
+  .prog-builder{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .prog-header{background:rgba(255,107,0,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .prog-name-display{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--accent2);letter-spacing:.15em}
+  .prog-line-count{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)}
+  .prog-body{padding:1rem 1.2rem;font-family:'Share Tech Mono',monospace;font-size:.8rem;min-height:160px}
+  .prog-body .pl{line-height:2;display:flex;gap:.75rem;align-items:center}
+  .pl-num{color:var(--dim);min-width:1.4rem;text-align:right}
+  .pl-kw{color:var(--accent2)}
+  .pl-motion{color:var(--accent)}
+  .pl-pos{color:#a78bfa}
+  .pl-speed{color:var(--accent3)}
+  .pl-term{color:var(--accent2)}
+  .pl-end{color:var(--dim)}
+  .pl-comment{color:var(--dim);font-style:italic}
+  .prog-footer{border-top:1px solid var(--border);padding:.5rem 1rem;display:flex;gap:.5rem;flex-wrap:wrap}
+  .prog-btn{background:none;border:1px solid var(--border);color:var(--dim);padding:.35rem .8rem;border-radius:2px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.1em;transition:all .2s}
+  .prog-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+  .prog-btn.active{background:rgba(255,107,0,.1);border-color:var(--accent2);color:var(--accent2)}
+
+  /* Soft key display */
+  .softkey-bar{background:#030a0f;border:1px solid var(--border);border-radius:3px;padding:.6rem 1rem;display:flex;gap:.5rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;align-items:center}
+  .sk{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:2px;padding:.25rem .6rem;color:var(--text);white-space:nowrap}
+  .sk.active{background:rgba(255,107,0,.15);border-color:var(--accent2);color:var(--accent2)}
+  .sk-sep{color:var(--dim);padding:0 .2rem}
+
+  /* Status bar */
+  .status-bar{background:#030a0f;border:1px solid rgba(255,107,0,.3);border-radius:3px;padding:.5rem .8rem;font-family:'Share Tech Mono',monospace;font-size:.72rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+  .sb-item{color:var(--dim)}
+  .sb-item.active{color:var(--accent2)}
+  .sb-item.mode{background:rgba(255,107,0,.15);border:1px solid rgba(255,107,0,.4);color:var(--accent2);padding:.1rem .4rem;border-radius:2px}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2.5rem}
+  .quiz-q{font-size:1.05rem;color:#fff;margin-bottom:1.4rem;line-height:1.65;font-weight:600}
+  .quiz-opts{display:flex;flex-direction:column;gap:.65rem}
+  .quiz-opt{padding:.88rem 1.2rem;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:.9rem;color:var(--text);transition:all .2s;display:flex;align-items:center;gap:.8rem}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent2);color:#fff;background:rgba(255,107,0,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);background:rgba(0,255,136,.1);color:var(--accent3)}
+  .quiz-opt.wrong{border-color:#ff4444;background:rgba(255,68,68,.1);color:#ff8888}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.73rem;width:1.4rem;height:1.4rem;border-radius:2px;background:rgba(255,107,0,.1);display:flex;align-items:center;justify-content:center;color:var(--accent2);flex-shrink:0;font-weight:700}
+  .quiz-fb{margin-top:1rem;font-family:'Share Tech Mono',monospace;font-size:.83rem;padding:.8rem 1rem;border-radius:3px;display:none;line-height:1.6}
+  .quiz-fb.show{display:block;animation:fi .3s ease}.quiz-fb.good{background:rgba(0,255,136,.1);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}.quiz-fb.bad{background:rgba(255,68,68,.1);color:#ff8888;border:1px solid rgba(255,68,68,.3)}
+  .quiz-nav{margin-top:1.4rem;display:flex;gap:1rem}
+  .qbtn{background:none;border:1px solid var(--border);color:var(--dim);padding:.6rem 1.2rem;border-radius:3px;cursor:pointer;font-family:'Exo 2',sans-serif;font-size:.85rem;transition:all .2s}
+  .qbtn.pri{background:rgba(255,107,0,.1);border-color:var(--accent2);color:var(--accent2)}.qbtn:hover{border-color:var(--accent2);color:var(--text)}.qbtn.pri:hover{background:rgba(255,107,0,.2)}
+  @keyframes fi{from{opacity:0}to{opacity:1}}
+
+  footer{position:relative;z-index:10;padding:3rem 2rem;border-top:1px solid var(--border);text-align:center}
+  .foot-logo{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent2);letter-spacing:.3em;margin-bottom:1rem}
+  footer p{font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);letter-spacing:.1em}
+
+  @media(max-width:600px){nav{padding:.8rem 1rem}.nav-links{display:none}.section{padding:3rem 1rem}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+<div id="particles"></div>
+
+<nav>
+  <a href="#hero" class="nav-logo">FANUC // CH.11</a>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#screens">Screens</a></li>
+    <li><a href="#create">Create</a></li>
+    <li><a href="#detail">Detail</a></li>
+    <li><a href="#motion">Motion</a></li>
+    <li><a href="#testing">Testing</a></li>
+    <li><a href="#save">Save/Restore</a></li>
+    <li><a href="#quiz">Review</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool Training Module</div>
+  <h1>Creating a <span>Program</span></h1>
+  <p class="hero-sub">Chapter 11 — Motion Instructions, Testing &amp; Program Management</p>
+  <div class="hero-cw">
+    <canvas id="heroC" width="240" height="220" style="display:block;filter:drop-shadow(0 0 22px rgba(255,107,0,.45))"></canvas>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO BEGIN</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section reveal" id="overview">
+  <div class="sec-label">11.2 — Motion Program Overview</div>
+  <h2 class="sec-title">What is a Motion Program?</h2>
+  <p style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">A program tells your robot what to do and how to do it. You must first create a program, then add instructions. A single program can move the robot, perform application operations, send output signals, respond to input signals, and track time, part count, or job number.</p>
+
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon">🤖</div>
+      <div class="card-title">Robot Motion</div>
+      <div class="card-body">Move the robot in an appropriate way to required locations in the workcell — the most fundamental program capability.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚙️</div>
+      <div class="card-title">Application Operations</div>
+      <div class="card-body">Perform application-specific operations such as gripping, welding, dispensing, or any other EOAT action required at each position.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📡</div>
+      <div class="card-title">I/O Signals</div>
+      <div class="card-body">Send output signals to and receive input signals from other equipment in the workcell — PLCs, conveyors, grippers, sensors.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🕐</div>
+      <div class="card-title">Tracking &amp; Logic</div>
+      <div class="card-body">Keep track of time, part count, or job number. Respond to conditions and branch program flow using registers and logic instructions.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENS OVERVIEW -->
+<section class="section" id="screens">
+  <div class="sec-label">11.3–11.4 — Screens</div>
+  <h2 class="sec-title reveal">Select &amp; Edit Screens</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Select Screen (11.3)</div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem">All stored programs are listed alphabetically. Access by pressing the Select key. Programs can also be sorted by type using F1 [TYPE].</p>
+
+      <div class="terminal blue" style="margin-bottom:1rem">
+        <div class="t-header blue">SELECT — ALL &nbsp; 685812 BYTES FREE &nbsp; 1/27</div>
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:.3rem .8rem;font-size:.75rem">
+          <span style="color:var(--dim)">No.</span><span style="color:var(--accent)">Program name</span><span style="color:var(--dim)">Comment</span>
+          <span style="color:var(--dim)">1</span><span style="color:#fff">BCKEDT</span><span style="color:var(--dim)">PC [</span>
+          <span style="color:var(--dim)">2</span><span style="color:#fff">AAVMMAIN</span><span style="color:var(--dim)">PC [</span>
+          <span style="color:var(--dim)">3</span><span style="color:#fff">ATERRJOB</span><span style="color:var(--dim)">VR [</span>
+          <span style="color:var(--dim)">4</span><span style="color:#fff">BICSETUP</span><span style="color:var(--dim)">VR [</span>
+          <span style="color:var(--dim)">5</span><span style="color:#fff">COMSET</span><span style="color:var(--dim)">PC [</span>
+          <span style="color:var(--dim)">6</span><span style="color:#fff">GEMDATA</span><span style="color:var(--dim)">PC [GEM Vars</span>
+          <span style="color:var(--dim)">7</span><span style="color:#fff">GETDATA</span><span style="color:var(--dim)">MR [Get PC Data</span>
+          <span style="color:var(--dim)">8</span><span style="color:var(--accent2)">GET_HOME</span><span style="color:var(--dim)">PC [Get Home Pos</span>
+        </div>
+      </div>
+
+      <div class="sub-title">Select Screen Soft Keys</div>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>[TYPE] / CREATE / DELETE</strong><span>Filter by subtype, create a new program, or delete the selected program.</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>MONITOR / [ATTR]</strong><span>Monitor a currently running program, or toggle attribute columns (size, date, write-protect status).</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>COPY / DETAIL / LOAD</strong><span>Copy a program to a new name, view program header details, or load a program from the default device.</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>SAVE AS / PRINT</strong><span>Save as a .TP binary file, or PRINT saves as a human-readable .LS text file to the default device.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Edit Screen (11.4)</div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem">Displays the selected program for editing, testing, and reviewing. The program name appears in the top-left of the screen and in the iPendant title bar. Select a program from the Select Screen by highlighting it and pressing Enter.</p>
+
+      <div class="prog-builder">
+        <div class="prog-header">
+          <span class="prog-name-display" id="editProgName">FANUC_ACADEMY</span>
+          <span class="prog-line-count">1/5</span>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span><span style="color:var(--dim)">=</span><span class="pl-speed">0</span></div>
+          <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span><span style="color:var(--dim)">=</span><span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">3</span><span style="color:var(--dim)"></span></div>
+          <div class="pl"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+        <div class="prog-footer">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">EDIT SOFT KEYS:</span>
+          <button class="prog-btn active">POINT</button>
+          <button class="prog-btn">TOUCHUP</button>
+          <button class="prog-btn">[INST]</button>
+          <button class="prog-btn">[EDCMD]</button>
+        </div>
+      </div>
+
+      <div class="sub-title">Edit Screen Soft Keys</div>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>POINT (Shift + F1)</strong><span>Records the current position of the robot at the cursor line using the active default motion instruction.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>TOUCHUP (Shift + F5)</strong><span>Overwrites the positional data of a previously recorded point with the robot's current position. Motion type, speed, and termination remain unchanged.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>[INST] — Instruction</strong><span>Gives access to all programming instructions: registers, I/O, logic (IF/SELECT/WAIT/JMP), calls, macros, and offset/frame instructions.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>[EDCMD] — Edit Command</strong><span>Gives access to editing functions such as insert, delete, copy, paste, and renumber.</span></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CREATE A PROGRAM -->
+<section class="section" id="create">
+  <div class="sec-label">11.5 — Creating a Program</div>
+  <h2 class="sec-title reveal">Procedure 11-1: Create a Program</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press the Select key</strong><p>Navigate to the Select Screen where all programs are listed.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F2 CREATE</strong><p>If CREATE is not visible, press the Next key to toggle soft key pages. The "Create Teach Pendant Program" screen appears.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Enter the program name</strong><p>Use preformed Words, Upper Case letter keys, or Options/Keybd → F5 KEYBOARD to type the name. Names convert to uppercase automatically.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Press F2 DETAIL or F3 EDIT</strong><p>DETAIL shows program header information. EDIT opens the program immediately for adding instructions.</p></div></div>
+      </div>
+
+      <div class="info-box" style="margin-top:1.5rem">
+        <div class="bi">📝</div>
+        <div class="it"><strong>Program Naming Rules:</strong> Max 36 characters. Must start with a letter. Letters and numbers are allowed. Only underscore (_) symbol is allowed — no @ (at), * (asterisk), or spaces. Names default to upper case after creation.</div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Interactive Name Validator</div>
+      <div style="background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);letter-spacing:.1em;margin-bottom:.8rem">ENTER PROGRAM NAME TO VALIDATE</p>
+        <input type="text" id="nameInput" placeholder="e.g. MY_PROGRAM" style="width:100%;background:#030a0f;border:1px solid var(--border);color:#fff;padding:.6rem .8rem;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:.85rem;outline:none;letter-spacing:.05em" oninput="validateName(this.value)">
+        <div id="nameResult" style="margin-top:.8rem;font-family:'Share Tech Mono',monospace;font-size:.8rem;line-height:1.8"></div>
+      </div>
+
+      <div class="terminal" style="margin-top:1.5rem">
+        <div class="t-header">CREATE TEACH PENDANT PROGRAM</div>
+        <div class="t-row"><span class="t-dim">Program Name:</span></div>
+        <div style="color:var(--accent2);font-size:.9rem;margin:.3rem 0">FANUC_ACADEMY<span class="t-cursor">█</span></div>
+        <div style="margin-top:.8rem;color:var(--dim)">-- End --</div>
+        <div style="margin-top:.8rem;color:var(--dim);font-size:.75rem">Select function:</div>
+        <div style="margin-top:.4rem;display:flex;gap:.5rem">
+          <span class="sk active">DETAIL</span>
+          <span class="sk">EDIT</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROGRAM DETAIL -->
+<section class="section" id="detail">
+  <div class="sec-label">11.6 — Program Detail</div>
+  <h2 class="sec-title reveal">Program Detail Information</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Program detail information (also called the program header) identifies and classifies the program. It is shown automatically the first time you create a program. To view it again later: SELECT key → F2 DETAIL.</p>
+
+  <div class="two-col">
+    <div class="reveal">
+      <table class="detail-table">
+        <thead><tr><th>FIELD</th><th>SET BY</th><th>DESCRIPTION</th></tr></thead>
+        <tbody>
+          <tr><td>Creation Date</td><td style="color:var(--dim)">Auto</td><td>Date the program name was created</td></tr>
+          <tr><td>Modification Date</td><td style="color:var(--dim)">Auto</td><td>Date the file was last displayed in the editor</td></tr>
+          <tr><td>Copy Source</td><td style="color:var(--dim)">Auto</td><td>Source file if copied; empty if original</td></tr>
+          <tr><td>Positions</td><td style="color:var(--dim)">Auto</td><td>TRUE/FALSE — whether program has recorded positions</td></tr>
+          <tr><td>Program Size</td><td style="color:var(--dim)">Auto</td><td>Program size in bytes</td></tr>
+          <tr><td>Program Name</td><td style="color:var(--accent2)">User</td><td>1–36 chars, starts with letter, no spaces or @*</td></tr>
+          <tr><td>Sub Type</td><td style="color:var(--accent2)">User</td><td>None (.TP), Macro (.MR), Cond (.CH), Collection (.CO)</td></tr>
+          <tr><td>Comment</td><td style="color:var(--accent2)">User</td><td>1–16 chars, any characters allowed</td></tr>
+          <tr><td>Group Mask</td><td style="color:var(--accent2)">User</td><td>Motion group(s) the program controls; * = unused</td></tr>
+          <tr><td>Write Protect</td><td style="color:var(--accent2)">User</td><td>ON = locked; OFF = editable (default: OFF)</td></tr>
+          <tr><td>Ignore Pause</td><td style="color:var(--accent2)">User</td><td>ON = continue on E-STOP/hold (non-motion only)</td></tr>
+          <tr><td>Stack Size</td><td style="color:var(--accent2)">User</td><td>Default 500, max 4000. Increase if stack overflow occurs.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">Program Sub Types</div>
+      <div class="subtype-grid">
+        <div class="subtype-card tp">
+          <div class="st-ext">.TP</div>
+          <div class="st-name">None (Standard)</div>
+          <div class="st-badge">DEFAULT</div>
+          <div class="st-body">Standard teach pendant program. Can include any instruction. The most common program type.</div>
+        </div>
+        <div class="subtype-card mr">
+          <div class="st-ext">.MR</div>
+          <div class="st-name">Macro</div>
+          <div class="st-badge">VERSATILE</div>
+          <div class="st-body">Can be executed from operator panel buttons, teach pendant keys, Manual Functions menu, or called by name from other programs.</div>
+        </div>
+        <div class="subtype-card ch">
+          <div class="st-ext">.CH</div>
+          <div class="st-name">Cond Handler</div>
+          <div class="st-badge">MONITOR</div>
+          <div class="st-body">Monitors I/O, register values, or alarm status during execution. Interrupts the current program when the condition is triggered.</div>
+        </div>
+        <div class="subtype-card co">
+          <div class="st-ext">.CO</div>
+          <div class="st-name">Collection</div>
+          <div class="st-badge">ORGANIZE</div>
+          <div class="st-body">Not executable — used to organize related programs (e.g. all subroutines called by MAIN.TP) for easier maintenance.</div>
+        </div>
+      </div>
+
+      <div class="terminal" style="margin-top:1rem">
+        <div class="t-header">PROGRAM DETAIL — 1/8</div>
+        <div style="font-size:.75rem;color:var(--dim);border:1px solid rgba(255,255,255,.08);padding:.5rem;border-radius:2px;margin-bottom:.5rem">
+          Creation Date: &nbsp;<span style="color:#fff">28-Jun-2018</span><br>
+          Modification Date: &nbsp;<span style="color:#fff">28-Jun-2018</span><br>
+          Copy Source: &nbsp;<span class="t-dim">—</span><br>
+          Positions: <span style="color:var(--accent2)">FALSE</span> &nbsp; Size: <span style="color:#fff">132 Byte</span>
+        </div>
+        <div style="color:var(--dim);font-size:.75rem;margin-bottom:.3rem">Program name:</div>
+        <div style="font-size:.8rem">
+          <div><span class="t-dim">1</span> <span style="color:var(--accent2)">FANUC_ACADEMY</span></div>
+          <div><span class="t-dim">2</span> Sub type: &nbsp;<span style="color:#fff">[None]</span></div>
+          <div><span class="t-dim">3</span> Comment: &nbsp;<span style="color:var(--dim)">[</span><span class="t-cursor">█</span><span style="color:var(--dim)">]</span></div>
+          <div><span class="t-dim">4</span> Group mask: &nbsp;<span style="color:#fff">[1,*,*,*,*,*,*,*]</span></div>
+          <div><span class="t-dim">5</span> Write protect: &nbsp;<span style="color:var(--accent3)">[OFF]</span></div>
+          <div><span class="t-dim">6</span> Ignore pause: &nbsp;<span style="color:var(--accent3)">[OFF]</span></div>
+          <div><span class="t-dim">7</span> Stack size: &nbsp;<span style="color:#fff">[ 500 ]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MOTION INSTRUCTIONS -->
+<section class="section" id="motion">
+  <div class="sec-label">11.7 — Motion Instructions</div>
+  <h2 class="sec-title reveal">Adding Motion Instructions</h2>
+
+  <!-- Anatomy -->
+  <div class="reveal" style="margin-bottom:2rem">
+    <div class="sub-title" style="margin-top:0">Anatomy of a Motion Instruction</div>
+    <div class="motion-anatomy">
+      <div class="mot-seg"><span class="val seg-j">J</span><span class="lbl">Motion Type<br>How to move</span></div>
+      <div class="mot-seg"><span class="val seg-p">P[1]</span><span class="lbl">Positional Data<br>Where to move</span></div>
+      <div class="mot-seg"><span class="val seg-s">100%</span><span class="lbl">Speed<br>How fast</span></div>
+      <div class="mot-seg"><span class="val seg-t">FINE</span><span class="lbl">Termination<br>How to stop</span></div>
+    </div>
+    <div class="card-grid" style="margin-top:1rem">
+      <div class="card" style="border-color:rgba(255,107,0,.35)">
+        <div class="card-title" style="color:var(--accent2)">Motion Type (J / L / C)</div>
+        <div class="card-body">J = Joint (fastest, arcing path). L = Linear (straight line, mm/sec). C = Circular arc. Determines how the robot physically moves between positions.</div>
+      </div>
+      <div class="card" style="border-color:rgba(0,212,255,.35)">
+        <div class="card-title" style="color:var(--accent)">Positional Data P[n]</div>
+        <div class="card-body">Tells the controller where to move — the recorded X, Y, Z, W, P, R position relative to the active User Frame and Tool Frame combination.</div>
+      </div>
+      <div class="card" style="border-color:rgba(0,255,136,.35)">
+        <div class="card-title" style="color:var(--accent3)">Speed</div>
+        <div class="card-body">For Joint: % of max joint speed (1–100%). For Linear/Circular: mm/sec or cm/min. Set the speed to match the application safely.</div>
+      </div>
+      <div class="card" style="border-color:rgba(167,139,250,.35)">
+        <div class="card-title" style="color:#a78bfa">Termination Type</div>
+        <div class="card-body">FINE = robot stops completely at position. CNT(0-100) = robot blends through the position toward the next. In STEP mode, all moves treated as FINE.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">11.7.1 — Motion Instructions and Frames</div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem">Every recorded position is relative to the active Tool Frame and User Frame. These three data items work together:</p>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>Tool Frame Data</strong><span>Tells the controller where the TCP is relative to the faceplate center.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>User Frame Data</strong><span>Tells the controller where the User Frame origin is relative to the robot origin (World).</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Positional Data</strong><span>Tells the controller where the Tool Frame (TCP) is relative to the User Frame origin.</span></div></li>
+      </ul>
+
+      <div class="warn-box" style="margin-top:1.5rem">
+        <div class="bi">⚠️</div>
+        <div class="wt"><strong>Critical Rule:</strong> A program taught in one User Frame and Tool Frame combination will NOT run correctly if a different User Frame and Tool Frame combination is active. Always verify active frames before teaching or running a program.</div>
+      </div>
+
+      <div class="sub-title">Procedure 11-2: Set Frames via Jog Menu</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Hold Shift + press COORD</strong><p>Opens the Jog Menu overlay showing current coordinate settings.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Enter Tool frame value</strong><p>Type the frame number on the Tool line using the numeric keypad.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Enter User frame value</strong><p>Repeat for the User line. Frames are now active — confirm before recording any positions.</p></div></div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="sub-title" style="margin-top:0">11.7.2 — Default Motion Instructions</div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1rem">Four default Motion Instructions are predefined. The last one selected becomes the active default used every time you record a position with Shift + F1 POINT.</p>
+
+      <div class="terminal">
+        <div class="t-header">SELECT MOTION — DEFAULT INSTRUCTIONS 1/4</div>
+        <div style="font-size:.8rem">
+          <div style="padding:.3rem .2rem;color:var(--accent2);cursor:default">1: J P[ ] 100% FINE</div>
+          <div style="padding:.3rem .2rem;color:var(--text);cursor:default">2: J P[ ] 100% CNT100</div>
+          <div style="padding:.3rem .2rem;color:var(--text);cursor:default">3: L P[ ] 100mm/sec FINE</div>
+          <div style="padding:.3rem .2rem;color:var(--text);cursor:default">4: L P[ ] 100mm/sec CNT100</div>
+        </div>
+        <div style="margin-top:.6rem;color:var(--dim);font-size:.72rem">Press ENTER to record position with selected instruction<br>Press F1 ED_DEF to change default without recording</div>
+      </div>
+
+      <div class="sub-title">Procedure 11-4: Record a Position</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Open program → place cursor on target line</strong><p>Navigate to the line where the motion instruction should be added.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F1 POINT → default instruction list appears</strong><p>The four default instructions are shown in a pop-up menu.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Cursor to desired instruction → press ENTER</strong><p>Records the robot's current position AND sets this as the new active default instruction. <strong>Any pre-existing instruction on that line is overwritten.</strong></p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>To set default without recording: press F1 ED_DEF → select → F4 DONE</strong><p>Changes the active default instruction only, does not record a position.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Shift + F1 POINT to record subsequent positions</strong><p>Jog robot to each location, hold Shift, press F1 POINT. The active default instruction is added automatically.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Frame instruction in program -->
+  <div class="sub-title reveal">Procedure 11-3: Set Frames as Program Instructions</div>
+  <div class="two-col reveal">
+    <div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1rem">Frame instructions embedded in the program ensure the correct frames are always active when the program runs — even if the Jog Menu was changed by another operator.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor → press F1 INST (press NEXT if hidden)</strong><p>Opens the instruction menu.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Navigate to Offset/Frames on page 2</strong><p>Scroll through the instruction pages to find the Offset/Frames submenu.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Select UFRAME_NUM=… or UTOOL_NUM=…</strong><p>Choose CONSTANT as the variable type, then type the frame number.</p></div></div>
+      </div>
+      <div class="note-box" style="margin-top:1rem"><div class="bi">ℹ️</div><div class="nt"><strong>NOTE:</strong> Adding frame instructions to the program does NOT immediately set the active frames. The lines must be executed, OR the frames must be set manually in the Jog Menu before recording positions.</div></div>
+    </div>
+    <div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <span class="prog-name-display">A_BOX</span>
+          <span class="prog-line-count">9/9</span>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span>=<span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span>=<span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">3</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">5</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[3]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">6</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[4]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">7</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[5]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">8</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">9</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);margin-top:.5rem;text-align:center">P[2] appears at lines 4, 8 → same position reused</p>
+    </div>
+  </div>
+</section>
+
+<!-- TESTING -->
+<section class="section" id="testing">
+  <div class="sec-label">11.8 — Testing</div>
+  <h2 class="sec-title reveal">Testing a Program</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">All programs must be tested before executing in automatic mode. Testing lets you verify taught positions, identify interference points, and verify program logic in a controlled way.</p>
+
+  <div class="test-compare reveal">
+    <div class="test-card step">
+      <div class="test-badge">T1 / T2 MODE</div>
+      <div class="test-title">STEP Test (11.8.1)</div>
+      <div class="test-body">Executes one line at a time. Every termination type is treated as FINE — the robot stops completely at each position before waiting for your input. Maximum control. Press STEP key to enable (indicator turns yellow).<br><br>FWD = next line. BWD = previous line. Release Shift = controlled stop. Release DEADMAN = E-stop.</div>
+    </div>
+    <div class="test-card cont">
+      <div class="test-badge">T1 / T2 MODE</div>
+      <div class="test-title">Continuous Test (11.8.2)</div>
+      <div class="test-body">Executes the full program without stopping. Each motion statement executes as programmed — CNT moves blend through positions. Gives a more accurate representation of the actual path.<br><br>Must be performed successfully BEFORE running in AUTO. Ensure STEP mode is OFF before executing.</div>
+    </div>
+  </div>
+
+  <div class="test-compare reveal">
+    <div class="test-card auto" style="grid-column:1/-1">
+      <div class="test-badge">AUTO MODE — REQUIRES TP DISABLED</div>
+      <div class="test-title">Running in AUTO (11.8.4)</div>
+      <div class="test-body">After successful STEP and Continuous tests, the robot runs solo without assistance. Uses the CYCLE START button. For the first AUTO run, start at a lower general override speed and slowly increase to the programmed speed.</div>
+    </div>
+  </div>
+
+  <div class="warn-box reveal">
+    <div class="bi">⚠️</div>
+    <div class="wt"><strong>WARNING:</strong> Prior to executing a program in AUTO, ensure a successful STEP test AND Continuous test have been completed. For the first AUTO execution, start at a lower general override speed and slowly approach the final programmed speed. Failure to safely execute in AUTO may result in injury to personnel or damage to equipment.</div>
+  </div>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 11-5: STEP Test</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Enable the Teach Pendant</strong><p></p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Select T1 or T2 Mode</strong><p>T1: max 250mm/sec. T2: programmed speed.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose and open the program</strong><p>Navigate to it from the Select Screen.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Place cursor at start point</strong><p></p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Press STEP key → verify STEP indicator is yellow</strong><p></p></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Center the DEADMAN Switch</strong><p></p></div></div>
+        <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Hold Shift + press FWD to execute one line</strong><p>Shift must be held for the duration of motion. FWD can be pressed and released to trigger the line.</p></div></div>
+        <div class="step"><div class="step-num">8</div><div class="step-body"><strong>Press FWD again for each subsequent line</strong><p>Continue until the program is fully verified.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 11-8: Run in AUTO</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Disable the Teach Pendant</strong><p></p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Select AUTO Mode</strong><p>When switching modes (T1/T2 ↔ AUTO), there will always be a fault — press Reset.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose the program</strong><p></p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Place cursor at start point</strong><p></p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Verify STEP mode is OFF</strong><p></p></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Press Reset to clear faults</strong><p></p></div></div>
+        <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Press Cycle Start</strong><p></p></div></div>
+      </div>
+
+      <div class="sub-title">Aborting a Program (11.8.3)</div>
+      <div class="info-box">
+        <div class="bi">ℹ️</div>
+        <div class="it">If a previous program did not reach [End], abort it before running a different program. Press FCTN → select -1- ABORT (ALL). This does NOT delete any programs or data — it only ends the previously active program task.</div>
+      </div>
+
+      <div class="sub-title">Touching Up a Point (11.9)</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Select program → cursor to the line</strong><p>Navigate to the motion instruction that needs updating.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Jog robot to the new position</strong><p></p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Shift + F5 TOUCHUP</strong><p>Only positional data changes. Motion type, speed, and termination remain unchanged. Successful touch-up displays @ symbol next to the position (e.g. @P[3]).</p></div></div>
+      </div>
+      <div class="note-box"><div class="bi">ℹ️</div><div class="nt"><strong>Set New ID prompt:</strong> Appears when multiple lines share the same Position ID. YES = new ID for this line only. NO = update ALL lines with the same ID.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SAVE / RESTORE -->
+<section class="section" id="save">
+  <div class="sec-label">11.10 — Save &amp; Restore</div>
+  <h2 class="sec-title reveal">Saving and Restoring Program Files</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Programs are saved to internal memory (SRAM) automatically as .TP binary files. Back up programs externally to protect against data loss. Programs can be saved and loaded in two formats.</p>
+
+  <div class="card-grid reveal">
+    <div class="card" style="border-color:rgba(0,212,255,.35)">
+      <div class="card-icon">💾</div>
+      <div class="card-title" style="color:var(--accent)">.TP File (Binary)</div>
+      <div class="card-body">The native FANUC program format. Binary — not human-readable, but required to load back onto the robot. Save via FCTN → SAVE or Select Screen → SAVE AS.</div>
+    </div>
+    <div class="card" style="border-color:rgba(0,255,136,.35)">
+      <div class="card-icon">📄</div>
+      <div class="card-title" style="color:var(--accent3)">.LS File (ASCII Text)</div>
+      <div class="card-body">Human-readable text version of the program. Useful for documentation, code review, and offline editing. Save via FCTN → PRINT or Select Screen → PRINT. Cannot be directly loaded as motion program.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📁</div>
+      <div class="card-title">File Location</div>
+      <div class="card-body">Programs are named PROGRAMNAME.TP in internal memory. For example: FANUC_ACADEMY.TP. Set the Default Device before saving or restoring any files.</div>
+    </div>
+  </div>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Saving — Two Methods</div>
+      <div class="terminal blue">
+        <div class="t-header blue">METHOD 1 — FUNCTION MENU (FROM EDIT SCREEN)</div>
+        <div style="color:var(--dim);font-size:.78rem;line-height:1.9">
+          1. Set Default Device<br>
+          2. Open program on Edit screen<br>
+          3. Press FCTN → -0- Next<br>
+          4. Select SAVE (for .TP) or PRINT (for .LS)<br>
+          5. Press Enter
+        </div>
+      </div>
+      <div class="terminal blue" style="margin-top:.75rem">
+        <div class="t-header blue">METHOD 2 — SELECT SCREEN</div>
+        <div style="color:var(--dim);font-size:.78rem;line-height:1.9">
+          1. Set Default Device<br>
+          2. Highlight program on Select Screen (do NOT press Enter)<br>
+          3. Press Next → F4 SAVE AS (for .TP) or F5 PRINT (for .LS)<br>
+          4. Verify path → press F1 DO_SAVE
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Restoring — Two Methods</div>
+      <div class="terminal blue">
+        <div class="t-header blue">METHOD 1 — FILE MENU</div>
+        <div style="color:var(--dim);font-size:.78rem;line-height:1.9">
+          1. Set Default Device<br>
+          2. Navigate to directory with the .TP file<br>
+          3. Press F2 DIR → select .TP<br>
+          4. Cursor to program → F3 LOAD → F4 YES<br>
+          5. Confirm the load prompt
+        </div>
+      </div>
+      <div class="terminal blue" style="margin-top:.75rem">
+        <div class="t-header blue">METHOD 2 — SELECT SCREEN</div>
+        <div style="color:var(--dim);font-size:.78rem;line-height:1.9">
+          1. Set Default Device<br>
+          2. Navigate to directory (if needed)<br>
+          3. From Select Screen → press Next → F3 LOAD<br>
+          4. Type the program name (case does not matter, spelling must be correct)<br>
+          5. Press Enter → program loads
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">11.11 — Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <div class="quiz-wrap reveal"><div id="qC"></div></div>
+</section>
+
+<footer>
+  <div class="foot-logo">FANUC // CHAPTER 11 // CREATING A PROGRAM</div>
+  <p>MATAGHAND0318CE &nbsp;|&nbsp; FANUC America Corporation © Copyright 2020</p>
+  <p style="margin-top:.5rem;font-size:.6rem;opacity:.5">DO NOT DUPLICATE — For Training Use Only</p>
+</footer>
+
+<script>
+// Particles
+(function(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<18;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${-Math.random()*15}s;--drift:${(Math.random()-.5)*120}px;opacity:0`;
+    if(Math.random()>.5)p.style.background='var(--accent2)';
+    if(Math.random()>.8)p.style.background='var(--accent3)';
+    c.appendChild(p);
+  }
+})();
+
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const max=document.documentElement.scrollHeight-innerHeight;
+  document.getElementById('pb').style.width=(scrollY/max*100)+'%';
+});
+
+// Reveal
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('visible');if(e.target.classList.contains('steps'))animSteps(e.target);}
+  });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+const sr=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)animSteps(e.target);});
+},{threshold:.1});
+document.querySelectorAll('.steps').forEach(el=>sr.observe(el));
+function animSteps(c){c.querySelectorAll('.step').forEach((s,i)=>setTimeout(()=>s.classList.add('visible'),i*150));}
+
+// Name validator
+function validateName(val){
+  const el=document.getElementById('nameResult');
+  if(!val){el.innerHTML='';return;}
+  const checks=[
+    {ok:/^[A-Za-z]/.test(val),msg:'Starts with a letter'},
+    {ok:val.length>=1&&val.length<=36,msg:`Length: ${val.length}/36 characters`},
+    {ok:!/[@* ]/.test(val),msg:'No @, *, or spaces'},
+    {ok:/^[A-Za-z0-9_]+$/.test(val),msg:'Only letters, numbers, underscore'},
+    {ok:!/^[0-9]/.test(val),msg:'Does not start with a number'},
+  ];
+  const allOk=checks.every(c=>c.ok);
+  el.innerHTML=checks.map(c=>`<div style="color:${c.ok?'var(--accent3)':'#ff8888'}">${c.ok?'✓':'✗'} ${c.msg}</div>`).join('')
+    +`<div style="margin-top:.5rem;color:${allOk?'var(--accent3)':'#ff8888'};font-weight:600">${allOk?'✓ VALID PROGRAM NAME':'✗ NAME HAS ISSUES'}</div>`;
+}
+
+// Hero canvas — animated program execution visualizer
+(function(){
+  const canvas=document.getElementById('heroC');
+  const ctx=canvas.getContext('2d');
+  const W=240,H=220;
+  const lines=[
+    {num:'1',code:'UFRAME_NUM=1',type:'frame'},
+    {num:'2',code:'UTOOL_NUM=1',type:'frame'},
+    {num:'3',code:'J P[1] 100% FINE',type:'motion'},
+    {num:'4',code:'J P[2] 100% FINE',type:'motion'},
+    {num:'5',code:'J P[3] 100% FINE',type:'motion'},
+    {num:'6',code:'J P[4] 100% FINE',type:'motion'},
+    {num:'7',code:'J P[1] 100% FINE',type:'motion'},
+    {num:'e',code:'[End]',type:'end'},
+  ];
+  let curLine=0,t=0,flashT=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // Header
+    ctx.fillStyle='rgba(255,107,0,.15)';ctx.fillRect(0,0,W,22);
+    ctx.fillStyle='var(--accent2,#ff6b00)';ctx.font='bold 9px "Orbitron"';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('FANUC_ACADEMY',8,11);
+    ctx.fillStyle='rgba(74,106,122,.8)';ctx.font='8px "Share Tech Mono"';ctx.textAlign='right';
+    ctx.fillText(`${curLine+1}/${lines.length}`,W-8,11);
+    // Program lines
+    lines.forEach((ln,i)=>{
+      const y=30+i*22;
+      const isCur=i===curLine;
+      if(isCur){
+        const flash=Math.sin(t*.15)>.2;
+        if(flash){ctx.fillStyle='rgba(255,107,0,.15)';ctx.fillRect(0,y-2,W,20);}
+        ctx.fillStyle='rgba(255,107,0,.6)';ctx.fillRect(0,y+7,3,6);
+      }
+      ctx.fillStyle='rgba(74,106,122,.7)';ctx.font='8px "Share Tech Mono"';ctx.textAlign='right';ctx.textBaseline='middle';
+      ctx.fillText(ln.num,18,y+8);
+      const c=isCur?'#fff':ln.type==='frame'?'rgba(255,107,0,.7)':ln.type==='motion'?'rgba(0,212,255,.7)':'rgba(74,106,122,.6)';
+      ctx.fillStyle=c;ctx.textAlign='left';
+      ctx.fillText(ln.code.length>22?ln.code.slice(0,21)+'…':ln.code,24,y+8);
+    });
+    // Advance line
+    if(t%40===0){
+      curLine=(curLine+1)%lines.length;
+      flashT=0;
+    }
+    // Bottom status bar
+    ctx.fillStyle='#030a0f';ctx.fillRect(0,H-18,W,18);
+    ctx.strokeStyle='rgba(255,107,0,.3)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,H-18);ctx.lineTo(W,H-18);ctx.stroke();
+    ctx.fillStyle='rgba(255,107,0,.8)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('STEP',8,H-9);
+    ctx.fillStyle='rgba(0,212,255,.6)';ctx.textAlign='center';
+    ctx.fillText('LINE '+curLine+' T2 RUNNING',W/2,H-9);
+    t++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// Quiz
+const Qs=[
+  {q:'To display a program the user must first navigate to which screen?',opts:['Edit Screen','Select Screen','Setup Screen','Program Screen'],correct:1,explain:'The Select Screen is where all stored programs are listed alphabetically. Press the Select key on the teach pendant to access it. From there you highlight a program and press Enter to open it in the Edit Screen.',wrongExplain:'The Select Screen is the starting point — all stored programs are listed there. The Edit Screen is where you arrive after selecting a program from the Select Screen.'},
+  {q:'Which type of instruction defines for the robot how to move, where to move, how fast to move, and how to stop?',opts:['Move Instruction','Logic Instruction','Motion Instruction','Kinematics Instruction'],correct:2,explain:'A Motion Instruction contains all four components: Motion Type (J/L/C — how to move), Positional Data P[n] (where to move), Speed (how fast), and Termination Type (FINE/CNT — how to stop).',wrongExplain:'Motion Instructions are the core building blocks of robot programs. They specify all four movement parameters: type, position, speed, and termination.'},
+  {q:'How many default motion instructions can be defined using HandlingTool software?',opts:['1','2','3','4'],correct:3,explain:'There are exactly four default Motion Instructions predefined by the software: J P[] 100% FINE, J P[] 100% CNT100, L P[] 100mm/sec FINE, and L P[] 100mm/sec CNT100. The last one selected becomes the active default.',wrongExplain:'HandlingTool provides four default motion instructions — two Joint and two Linear, each with FINE and CNT100 termination variants.'},
+  {q:'What type of test should be performed prior to running the program in continuous?',opts:['Auto Test','Step Test','Constant Test','Running in continuous is fine'],correct:1,explain:'A Step Test must be performed before a Continuous Test. Step testing executes one line at a time, giving maximum control to verify each position and stop safely if something is wrong before running at full speed.',wrongExplain:'The correct testing sequence is always: Step Test → Continuous Test → Auto. Each step must be completed successfully before moving to the next.'},
+  {q:'In a STEP test, how is every termination type interpreted?',opts:['As programmed (CNT blends through)','As FINE (robot stops at every position)','As CNT100 (maximum blending)','Termination is ignored in STEP mode'],correct:1,explain:'In STEP mode, every termination type — regardless of how it is programmed — is treated as FINE. The robot moves to each position and stops completely, waiting for the operator to press FWD before continuing.',wrongExplain:'STEP mode overrides termination settings. Even if a position is programmed with CNT100, the robot will stop and wait at that position in STEP mode.'},
+  {q:'What happens when you Touch Up a point?',opts:['Only the positional data changes; motion type, speed, and termination remain unchanged','The entire motion instruction is replaced with a new default instruction','A new Position ID is always created','The motion type also changes to match the active default'],correct:0,explain:'Touching up a point updates ONLY the positional data (X, Y, Z, W, P, R) — the path geometry for that line. The motion type (J/L/C), speed, and termination type remain exactly as they were.',wrongExplain:'Touch-up is specifically designed to change just the position while preserving everything else about the motion instruction. That is what makes it useful for fine adjustments.'},
+  {q:'A program taught in User Frame 1 / Tool Frame 1 is later run with User Frame 2 / Tool Frame 2 active. What happens?',opts:['The program runs correctly — frames are only used for recording','The program will NOT run correctly — positions will be interpreted incorrectly','The controller automatically compensates for the frame difference','The program aborts immediately with a frame mismatch alarm'],correct:1,explain:'All recorded positions are stored relative to the Tool and User Frame active when they were recorded. Running the same positions with different active frames causes the controller to interpret every position incorrectly — the robot will move to wrong locations.',wrongExplain:'Frame mismatch is one of the most common causes of robot crashes. Position data is only valid when the same Tool Frame and User Frame combination is active as when the positions were originally taught.'},
+  {q:'What is the correct sequence for running a program for the very first time in AUTO?',opts:['Run immediately at full programmed speed to save time','Step Test → Continuous Test → AUTO at lower speed, gradually increasing','Continuous Test only — Step testing is optional','AUTO is safe to run without any prior testing if the program was carefully taught'],correct:1,explain:'The mandatory sequence is: Step Test first (one line at a time), then Continuous Test (full run at T1/T2 speed), then AUTO starting at a lower general override speed and gradually increasing to the programmed speed. Skipping any step risks injury or equipment damage.',wrongExplain:'All three testing phases are required — each one builds on the verification of the previous. The first AUTO run must also start at reduced speed and be cautiously increased.'},
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{el.classList.add('locked');if(idx===q.correct)el.classList.add('correct');else if(idx===i&&idx!==q.correct)el.classList.add('wrong');});
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent2);text-shadow:var(--glow2);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 11: Creating a Program.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

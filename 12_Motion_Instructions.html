@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Motion Instructions — Chapter 12</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent2),var(--accent));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent2);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent2);text-shadow:var(--glow2)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent2);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow2),0 0 60px rgba(255,107,0,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent2)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(255,107,0,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(0,212,255,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent2);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent2),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent2),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent2);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent2);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow2);animation:pg 2s ease infinite}
+  .sdot.b{background:var(--accent);box-shadow:var(--glow)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}.sdot.p{background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .info-box{background:rgba(255,107,0,.05);border:1px solid rgba(255,107,0,.25);border-left:3px solid var(--accent2);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+  .it{font-size:.85rem;color:#ffc080;line-height:1.7}.it strong{color:#ffe0c0}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  /* Motion anatomy display */
+  .motion-anatomy{display:flex;align-items:stretch;gap:0;background:#030a0f;border:1px solid var(--border);border-radius:4px;overflow:hidden;font-family:'Orbitron',sans-serif;font-size:clamp(1.4rem,4vw,2.5rem);font-weight:900}
+  .mot-seg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:.8rem .4rem;border-right:1px solid var(--border);position:relative;transition:background .2s}
+  .mot-seg:last-child{border-right:none}
+  .mot-seg:hover{background:rgba(255,255,255,.04)}
+  .mot-seg .val{letter-spacing:.05em}
+  .mot-seg .lbl{font-family:'Share Tech Mono',monospace;font-size:.58rem;color:var(--dim);letter-spacing:.1em;margin-top:.4rem;text-align:center}
+  .seg-j{color:var(--accent2)}.seg-p{color:var(--accent)}.seg-s{color:var(--accent3)}.seg-t{color:#a78bfa}
+
+  /* Terminal */
+  .terminal{background:#030a0f;border:1px solid var(--accent2);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .terminal.blue{border-color:var(--accent)}
+  .t-header{color:var(--accent2);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(255,107,0,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-header.blue{color:var(--accent);border-bottom-color:rgba(0,212,255,.2)}
+  .t-lbl{color:var(--accent)}.t-val{color:#fff}.t-dim{color:var(--dim)}.t-ok{color:var(--accent3)}.t-warn{color:var(--accent2)}
+  .t-cursor{animation:blink .8s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .t-line{color:var(--text);line-height:2}
+  .t-line span.num{color:var(--dim);min-width:1.5rem;display:inline-block}
+  .t-line span.kw{color:var(--accent2)}
+  .t-line span.pos{color:var(--accent)}
+  .t-line span.term{color:#a78bfa}
+  .t-line span.sp{color:var(--accent3)}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent2),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent2);flex-shrink:0;box-shadow:var(--glow2);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+
+  /* Motion type cards */
+  .motion-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+  .motion-card{border-radius:4px;padding:1.5rem;transition:transform .3s,box-shadow .3s;cursor:pointer}
+  .motion-card:hover{transform:translateY(-4px)}
+  .motion-card.jt{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .motion-card.ln{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .motion-card.cr{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .mc-letter{font-family:'Orbitron',sans-serif;font-size:2.5rem;font-weight:900;margin-bottom:.3rem}
+  .motion-card.jt .mc-letter{color:var(--accent2)}.motion-card.ln .mc-letter{color:var(--accent)}.motion-card.cr .mc-letter{color:var(--accent3)}
+  .mc-name{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.1em}
+  .motion-card.jt .mc-name{color:var(--accent2)}.motion-card.ln .mc-name{color:var(--accent)}.motion-card.cr .mc-name{color:var(--accent3)}
+  .mc-badge{font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:.12rem .4rem;border-radius:2px;display:inline-block;margin-bottom:.5rem}
+  .motion-card.jt .mc-badge{background:rgba(255,107,0,.12);color:var(--accent2);border:1px solid rgba(255,107,0,.3)}
+  .motion-card.ln .mc-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+  .motion-card.cr .mc-badge{background:rgba(0,255,136,.12);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}
+  .mc-body{font-size:.8rem;color:var(--dim);line-height:1.7}
+
+  /* Canvas viz */
+  .canvas-wrap{background:#030a0f;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-top:1rem}
+  .canvas-wrap canvas{display:block;width:100%;height:auto}
+
+  /* Speed table */
+  .speed-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:1rem}
+  .speed-table th{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:.18em;color:var(--accent2);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+  .speed-table td{padding:.75rem 1rem;border-bottom:1px solid rgba(26,58,92,.4);color:var(--text);vertical-align:top;transition:background .2s}
+  .speed-table tr:hover td{background:rgba(255,107,0,.04)}
+  .speed-table td:first-child{color:#fff;font-weight:600;font-family:'Share Tech Mono',monospace}
+  .speed-table td:nth-child(2){color:var(--accent3)}
+
+  /* Termination visual */
+  .term-compare{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0}
+  @media(max-width:600px){.term-compare{grid-template-columns:1fr}}
+  .term-card{border-radius:4px;padding:1.6rem}
+  .term-card.fine{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .term-card.cnt{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .term-title{font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:700;margin-bottom:.8rem}
+  .term-card.fine .term-title{color:var(--accent2)}.term-card.cnt .term-title{color:var(--accent)}
+  .term-body{font-size:.82rem;color:var(--dim);line-height:1.7}
+  .term-badge{font-family:'Share Tech Mono',monospace;font-size:.6rem;padding:.12rem .4rem;border-radius:2px;display:inline-block;margin-bottom:.6rem}
+  .term-card.fine .term-badge{background:rgba(255,107,0,.12);color:var(--accent2);border:1px solid rgba(255,107,0,.3)}
+  .term-card.cnt .term-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+
+  /* CNT slider */
+  .cnt-demo{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;margin-top:1rem}
+  .cnt-label{font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);letter-spacing:.12em;margin-bottom:.6rem}
+  input[type=range]{width:100%;accent-color:var(--accent2);margin:.5rem 0}
+  .cnt-value{font-family:'Orbitron',sans-serif;font-size:1.4rem;font-weight:700;color:var(--accent2);margin-bottom:.5rem}
+
+  /* PR table */
+  .pr-table{width:100%;border-collapse:collapse;font-size:.82rem;background:#030a0f;border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .pr-table th{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.15em;color:var(--accent2);text-align:left;padding:.6rem 1rem;background:rgba(255,107,0,.06);border-bottom:1px solid var(--border)}
+  .pr-table td{padding:.6rem 1rem;border-bottom:1px solid rgba(26,58,92,.3);transition:background .2s}
+  .pr-table tr:hover td{background:rgba(0,212,255,.04)}
+  .pr-table td:first-child{color:var(--accent);font-family:'Share Tech Mono',monospace}
+  .pr-table td:last-child{color:var(--accent3)}
+
+  /* Program builder */
+  .prog-builder{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .prog-header{background:rgba(255,107,0,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .prog-name-display{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--accent2);letter-spacing:.15em}
+  .prog-body{padding:1rem 1.2rem;font-family:'Share Tech Mono',monospace;font-size:.8rem;min-height:160px}
+  .prog-body .pl{line-height:2;display:flex;gap:.75rem;align-items:center}
+  .pl-num{color:var(--dim);min-width:1.4rem;text-align:right}
+  .pl-kw{color:var(--accent2)}
+  .pl-motion{color:var(--accent)}
+  .pl-pos{color:#a78bfa}
+  .pl-speed{color:var(--accent3)}
+  .pl-term{color:var(--accent2)}
+  .pl-end{color:var(--dim)}
+  .prog-footer{border-top:1px solid var(--border);padding:.5rem 1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+
+  /* Soft keys */
+  .sk{font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:.25rem .6rem;border-radius:2px;border:1px solid var(--border);color:var(--dim);background:#030a0f;cursor:pointer;transition:all .2s;user-select:none}
+  .sk.active,.sk:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.08)}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem;margin-top:1rem}
+  .quiz-q{font-size:.98rem;color:#fff;font-weight:600;line-height:1.6;margin-bottom:1.5rem}
+  .quiz-opts{display:flex;flex-direction:column;gap:.75rem}
+  .quiz-opt{display:flex;align-items:center;gap:.9rem;padding:.9rem 1.1rem;background:#030a0f;border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .2s;font-size:.85rem;color:var(--dim)}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent2);color:#fff;background:rgba(255,107,0,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.06)}
+  .quiz-opt.wrong{border-color:#ff3232;color:#ff8888;background:rgba(255,50,50,.06)}
+  .quiz-opt.locked{cursor:default}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;width:1.6rem;height:1.6rem;border-radius:50%;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .quiz-fb{margin-top:1.2rem;font-size:.85rem;line-height:1.7;border-radius:3px;padding:0;max-height:0;overflow:hidden;transition:all .4s ease;opacity:0}
+  .quiz-fb.show{max-height:200px;padding:.9rem 1.1rem;opacity:1}
+  .quiz-fb.good{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.3);color:var(--accent3)}
+  .quiz-fb.bad{background:rgba(255,50,50,.07);border:1px solid rgba(255,50,50,.3);color:#ff8888}
+  .quiz-nav{margin-top:1.2rem;display:flex;gap:.8rem;justify-content:flex-end}
+  .qbtn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.5rem 1.2rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s}
+  .qbtn:hover,.qbtn.pri{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.08)}
+  .qbtn.pri{box-shadow:var(--glow2)}
+
+  /* Lab card */
+  .lab-card{background:var(--panel);border:1px solid rgba(0,255,136,.3);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+  .lab-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent3),transparent)}
+  .lab-num{font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--accent3);letter-spacing:.2em;margin-bottom:.3rem}
+  .lab-title{font-family:'Orbitron',sans-serif;font-size:1rem;color:#fff;margin-bottom:.8rem}
+  .lab-body{font-size:.85rem;color:var(--dim);line-height:1.8}
+  .lab-steps{margin-top:1rem;padding-left:1.2rem;display:flex;flex-direction:column;gap:.4rem}
+  .lab-steps li{font-size:.82rem;color:var(--dim);line-height:1.7}
+  .lab-steps li strong{color:var(--text)}
+
+  @media(max-width:768px){nav .nav-links{display:none}.motion-grid{grid-template-columns:1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+
+<nav>
+  <a class="nav-logo" href="#">FANUC // CH.12</a>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#motion-types">Motion Types</a></li>
+    <li><a href="#positions">Positions</a></li>
+    <li><a href="#speed">Speed</a></li>
+    <li><a href="#termination">Termination</a></li>
+    <li><a href="#labs">Labs</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-label">HandlingTool — Chapter 12</div>
+  <h1>Motion<br><span>Instructions</span></h1>
+  <p class="hero-sub">How robots move, where they go, and how fast they get there</p>
+
+  <div class="hero-cw">
+    <div class="hero-ring ring1"></div>
+    <div class="hero-ring ring2"></div>
+    <div style="position:relative;z-index:2;background:#030a0f;border:1px solid var(--border);border-radius:4px;padding:1.2rem 2rem;font-family:'Share Tech Mono',monospace;font-size:.8rem;min-width:280px">
+      <div style="color:var(--dim);font-size:.65rem;letter-spacing:.2em;margin-bottom:.6rem">MOTION INSTRUCTION SYNTAX</div>
+      <div style="font-size:1.5rem;letter-spacing:.05em">
+        <span style="color:var(--accent2)">J</span><span style="color:var(--dim)">@</span><span style="color:var(--accent)">P[1]</span> <span style="color:var(--accent3)">50%</span> <span style="color:#a78bfa">FINE</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:.4rem;font-size:.58rem;color:var(--dim)">
+        <span>TYPE</span><span>POSITION</span><span>SPEED</span><span>TERM</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO EXPLORE</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section" id="overview">
+  <div class="sec-label">12.2 — Overview</div>
+  <h2 class="sec-title reveal">Motion Instruction Overview</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">Instructions that tell the robot <strong style="color:#fff">where to go</strong>, <strong style="color:#fff">how to move</strong>, <strong style="color:#fff">at what speed</strong>, and <strong style="color:#fff">what to do when it arrives</strong> are called motion instructions. Every motion instruction contains five key components.</p>
+
+  <!-- Anatomy -->
+  <div class="reveal" style="margin-bottom:2.5rem">
+    <div class="sub-title" style="margin-top:0">Anatomy of a Motion Instruction</div>
+    <div class="motion-anatomy">
+      <div class="mot-seg"><div class="val seg-j">J</div><div class="lbl">MOTION<br>TYPE</div></div>
+      <div class="mot-seg"><div class="val" style="color:var(--dim);font-size:1.2rem">@</div><div class="lbl">POSITION<br>INDICATOR</div></div>
+      <div class="mot-seg"><div class="val seg-p">P[1]</div><div class="lbl">POSITIONAL<br>DATA</div></div>
+      <div class="mot-seg"><div class="val seg-s">50%</div><div class="lbl">SPEED</div></div>
+      <div class="mot-seg"><div class="val seg-t">FINE</div><div class="lbl">TERMINATION<br>TYPE</div></div>
+    </div>
+  </div>
+
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon">🔀</div>
+      <div class="card-title">Motion Type</div>
+      <div class="card-body">Defines <em>how</em> the robot travels to the position — Joint (J), Linear (L), or Circular (C).</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📍</div>
+      <div class="card-title">Positional Data</div>
+      <div class="card-body">Defines <em>where</em> the robot moves. Stored as a Position P[n] or Position Register PR[x].</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">Speed</div>
+      <div class="card-body">Defines <em>how fast</em> the robot moves. Units depend on the motion type selected.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎯</div>
+      <div class="card-title">Termination Type</div>
+      <div class="card-body">Defines <em>how</em> the robot ends the move — FINE (full stop) or CNT (continuous blend).</div>
+    </div>
+  </div>
+
+  <div class="note-box reveal">
+    <div class="bi">📌</div>
+    <div class="nt"><strong>Motion Options</strong> — An additional optional field (e.g. ACC100) can appear after the termination type. Motion Options will be covered in a later chapter.</div>
+  </div>
+</section>
+
+<!-- MOTION TYPES -->
+<section class="section" id="motion-types">
+  <div class="sec-label">12.3 — Motion Types</div>
+  <h2 class="sec-title reveal">Motion Types</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">The Motion Type defines <em>how</em> the robot will move to the destination. It is set by the motion instruction in the program — not by how the robot was jogged to the position.</p>
+
+  <div class="motion-grid reveal">
+    <div class="motion-card jt">
+      <div class="mc-letter">J</div>
+      <div class="mc-name">Joint Motion</div>
+      <div class="mc-badge">% / sec / msec</div>
+      <div class="mc-body">All required axes move simultaneously to the destination. Each axis starts and stops at the same time. The actual speed depends on the slowest axis. Speed is specified as a percentage of default speed, or timed in ms/sec.</div>
+    </div>
+    <div class="motion-card ln">
+      <div class="mc-letter">L</div>
+      <div class="mc-name">Linear Motion</div>
+      <div class="mc-badge">mm/sec / cm/min / inch/min</div>
+      <div class="mc-body">The TCP moves in a perfectly straight line from start to destination. Speed is specified in velocity units. Programmed at the destination position.</div>
+    </div>
+    <div class="motion-card cr">
+      <div class="mc-letter">C</div>
+      <div class="mc-name">Circular Motion</div>
+      <div class="mc-badge">mm/sec / cm/min / inch/min</div>
+      <div class="mc-body">The TCP moves in an arc through an intermediate position to the destination. Requires TWO half-circles (4 positions) to complete a full circle. Programmed at the intermediate position.</div>
+    </div>
+  </div>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Changing Motion Types (Procedure 12-1)</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Highlight the motion type</strong><p>Place your cursor on the J, L, or C character of the motion instruction you want to change.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F4 [CHOICE]</strong><p>A popup menu appears listing the available motion types: Joint, Linear, Circular, Circle Arc.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Choose the desired motion type</strong><p>The instruction updates to reflect the new motion type and any relevant syntax changes.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Programming a Circle (Procedure 12-2)</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Move to the start of the circle</strong><p>Record as a Joint or Linear move. This brings the robot from anywhere in the cell to the circle's start.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Move to the first intermediate position</strong><p>Record, then highlight the motion type, press F4 [CHOICE], select Circular. The instruction changes to the circular format.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Move to the destination position</strong><p>Place cursor on the destination line, then press F3 [TOUCHUP] to record the destination.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Repeat for the second half</strong><p>A full circle requires two half-circles, each with an intermediate + destination position.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reveal" style="margin-top:2.5rem">
+    <div class="sub-title" style="margin-top:0">Full Circle Program Syntax</div>
+    <div class="prog-builder">
+      <div class="prog-header">
+        <span class="prog-name-display">A_CIRCLE</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">5 LINES</span>
+      </div>
+      <div class="prog-body">
+        <div class="pl"><span class="pl-num">1</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1]</span>&nbsp;<span class="pl-speed">100mm/sec</span>&nbsp;<span class="pl-term">FINE</span>&nbsp;<span style="color:var(--dim);font-style:italic">; START POSITION</span></div>
+        <div class="pl"><span class="pl-num">2</span><span class="pl-motion">C</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span style="color:var(--dim);font-style:italic">; INTERMEDIATE 1</span></div>
+        <div class="pl"><span class="pl-num">&nbsp;</span>&nbsp;<span class="pl-pos">P[3]</span>&nbsp;<span class="pl-speed">100mm/sec</span>&nbsp;<span class="pl-term">FINE</span>&nbsp;<span style="color:var(--dim);font-style:italic">; DESTINATION 1</span></div>
+        <div class="pl"><span class="pl-num">3</span><span class="pl-motion">C</span>&nbsp;<span class="pl-pos">P[4]</span>&nbsp;<span style="color:var(--dim);font-style:italic">; INTERMEDIATE 2</span></div>
+        <div class="pl"><span class="pl-num">&nbsp;</span>&nbsp;<span class="pl-pos">P[1']</span>&nbsp;<span class="pl-speed">100mm/sec</span>&nbsp;<span class="pl-term">FINE</span>&nbsp;<span style="color:var(--dim);font-style:italic">; BACK TO START</span></div>
+        <div class="pl"><span class="pl-end">[End]</span></div>
+      </div>
+    </div>
+
+    <!-- Canvas circle visualizer -->
+    <div class="canvas-wrap" style="margin-top:1rem">
+      <canvas id="circleCanvas" width="560" height="220"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- POSITION INFORMATION -->
+<section class="section" id="positions">
+  <div class="sec-label">12.4 — 12.7 — Positions</div>
+  <h2 class="sec-title reveal">Position Information &amp; Types</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">Positional information describes the location, orientation, and configuration of the TCP when a motion instruction executes. All positional data is recorded automatically when the motion instruction is added.</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Positional Information Components</div>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>UF — User Frame</strong><span>References the User Frame the position was recorded with respect to.</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>UT — Tool Frame</strong><span>References the Tool Frame the position was recorded with respect to.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Configuration</strong><span>Describes the posture of the robot (Flip/NoFlip, Up/Down, Front/Back) upon arrival at the destination.</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Location (X, Y, Z)</strong><span>Describes the three-dimensional position of the TCP in Cartesian space.</span></div></li>
+        <li class="spec-item"><div class="sdot p"></div><div class="spec-text"><strong>Orientation (W, P, R)</strong><span>Rotation about X (Yaw/W), Y (Pitch/P), and Z (Roll/R).</span></div></li>
+      </ul>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Configuration — Joint Placement</div>
+      <div class="terminal blue">
+        <div class="t-header blue">CONFIGURATION IDENTIFIER — (F, L, U, T, 0, 0, 0)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .5rem;margin-top:.5rem;font-size:.8rem">
+          <div><span style="color:var(--accent2)">FLIP / NOFLIP</span><br><span style="color:var(--dim)">Wrist placement (J5)</span></div>
+          <div><span style="color:var(--accent2)">LEFT / RIGHT</span><br><span style="color:var(--dim)">Arm placement (horizontal)</span></div>
+          <div><span style="color:var(--accent2)">UP / DOWN</span><br><span style="color:var(--dim)">Arm placement (J3)</span></div>
+          <div><span style="color:var(--accent2)">FRONT / BACK</span><br><span style="color:var(--dim)">Robot placement (J1)</span></div>
+        </div>
+        <div style="margin-top:1rem;font-size:.75rem;color:var(--dim)">Turn number: -1 = -539° to -180° | 0 = -179° to 179° | 1 = 180° to 539°</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Position vs Position Register -->
+  <div class="reveal" style="margin-top:3rem">
+    <div class="sub-title" style="margin-top:0">Position Types — P[n] vs PR[x]</div>
+    <div class="two-col">
+      <div>
+        <div class="term-card fine" style="margin-bottom:1rem">
+          <div class="term-badge">LOCAL</div>
+          <div class="term-title">P[n] — Position</div>
+          <div class="term-body">Stored <em>within</em> the program. Identified by a number (P[1] to P[32767]). Positions in different programs sharing the same ID have different physical data — they are not correlated. Best for positions used only in one program.</div>
+        </div>
+        <div class="info-box">
+          <div class="bi">💡</div>
+          <div class="it">P[1] in PROGRAM_A and P[1] in PROGRAM_B are completely independent positions.</div>
+        </div>
+      </div>
+      <div>
+        <div class="term-card cnt" style="margin-bottom:1rem">
+          <div class="term-badge">GLOBAL</div>
+          <div class="term-title">PR[x] — Position Register</div>
+          <div class="term-body">Stored <em>globally</em> in controller memory, accessible by any program. Uses UF:F and UT:F (active frames) rather than fixed frames. Ideal for Home, Pick, Drop, and Repair positions shared across routines.</div>
+        </div>
+        <div class="warn-box" style="margin:0">
+          <div class="bi">⚠️</div>
+          <div class="wt"><strong>Caution:</strong> PR data is shared between all programs. The same PR[x] may resolve to different physical locations depending on the active USER and TOOL frames.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR examples -->
+  <div class="reveal" style="margin-top:2rem">
+    <div class="sub-title" style="margin-top:0">Common Position Register Examples (12.7.1)</div>
+    <div class="card-grid">
+      <div class="card"><div class="card-icon">🏠</div><div class="card-title">PR[1] — Home</div><div class="card-body">Away from the workpiece transfer area. Robot moves here before the first position and between cycles.</div></div>
+      <div class="card"><div class="card-icon">🔧</div><div class="card-title">PR[2] — Repair</div><div class="card-body">Where repair operations are performed. Away from other equipment and the transfer area.</div></div>
+      <div class="card"><div class="card-icon">🛡️</div><div class="card-title">PR[3] — Safe</div><div class="card-body">Away from fixtures and transfer area. Move here any time the robot must clear workcell activity.</div></div>
+    </div>
+  </div>
+
+  <!-- Creating a PR -->
+  <div class="reveal" style="margin-top:2rem">
+    <div class="sub-title">Creating a Position Register (Procedure 12-4)</div>
+    <div class="two-col">
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Move robot to the position</strong><p>Jog the robot to the exact location you want to record as a Position Register.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Highlight the PR to record</strong><p>Press DATA → F1 [TYPE] → Position Registers to access the PR Data Screen.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Name the Position Register</strong><p>Enter a descriptive name like HOME, REPAIR, or SAFE.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Press Shift + F3 RECORD</strong><p>An "R" appears on the PR line confirming the position has been recorded.</p></div></div>
+      </div>
+      <div>
+        <div class="sub-title" style="margin-top:0">Truly Global PR — Joint Representation (12.7.7)</div>
+        <p style="color:var(--dim);font-size:.85rem;line-height:1.7;margin-bottom:1rem">To make a PR resolve to the <em>same physical location regardless of active frames</em>, convert its data to Joint (degree) representation. The controller uses absolute joint angles — frames become irrelevant.</p>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Access the PR positional data</strong><p>Highlight PR → press F4 POSITION.</p></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-num" style="all:unset"></div><div class="step-body"><strong>Press F5 [REPRE]</strong><p>Select Joint, then confirm with Continue.</p></div></div>
+        </div>
+        <div class="note-box" style="margin-top:1rem">
+          <div class="bi">📌</div>
+          <div class="nt">Ensure the <strong>correct frames are set</strong> before recording any Position Register.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SPEED -->
+<section class="section" id="speed">
+  <div class="sec-label">12.8 — Speed</div>
+  <h2 class="sec-title reveal">Speed</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">Speed dictates how fast the robot moves during motion. It can be set as part of the motion statement, and further scaled by the General Override on the teach pendant.</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Speed Units by Motion Type</div>
+      <table class="speed-table">
+        <thead><tr><th>MOTION TYPE</th><th>UNIT</th><th>NOTES</th></tr></thead>
+        <tbody>
+          <tr><td>JOINT</td><td>%</td><td>Percentage of default max speed</td></tr>
+          <tr><td>JOINT</td><td>sec / msec</td><td>Timed move duration</td></tr>
+          <tr><td>LINEAR / CIRCULAR</td><td>mm/sec</td><td>Most common linear unit</td></tr>
+          <tr><td>LINEAR / CIRCULAR</td><td>cm/min</td><td>Centimeters per minute</td></tr>
+          <tr><td>LINEAR / CIRCULAR</td><td>inch/min</td><td>Inches per minute</td></tr>
+          <tr><td>LINEAR / CIRCULAR</td><td>deg/sec</td><td>Degrees per second</td></tr>
+          <tr><td>LINEAR / CIRCULAR</td><td>sec / msec</td><td>Timed move duration</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">General Override (12.8.2)</div>
+      <div class="terminal" style="border-color:var(--accent)">
+        <div class="t-header blue">GENERAL OVERRIDE — TEACH PENDANT (TOP RIGHT)</div>
+        <div class="t-line">Location: <span style="color:var(--accent2)">Green box, top-right of teach pendant</span></div>
+        <div class="t-line">Keys: <span style="color:var(--accent3)">+% and −% (5% increments by default)</span></div>
+        <div class="t-line">Range: <span style="color:#fff">0.01% (VFine) → 100%</span></div>
+        <div style="margin-top:.8rem;padding:.7rem;background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.2);border-radius:3px;font-size:.8rem">
+          <div style="color:var(--accent2);margin-bottom:.3rem">EXAMPLE:</div>
+          <div style="color:var(--dim)">Motion statement: <span style="color:#fff">1000 mm/sec</span></div>
+          <div style="color:var(--dim)">General override: <span style="color:#fff">75%</span></div>
+          <div style="color:var(--dim)">Actual speed: <span style="color:var(--accent3)">750 mm/sec</span></div>
+        </div>
+      </div>
+      <div class="info-box" style="margin-top:1rem">
+        <div class="bi">⚡</div>
+        <div class="it">Override can be changed <strong>while the program is running</strong> without stopping execution.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TERMINATION -->
+<section class="section" id="termination">
+  <div class="sec-label">12.9 — Termination Type</div>
+  <h2 class="sec-title reveal">Termination Type</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">Termination type specifies what the robot does as it approaches the end of a motion. It is programmed at the <em>destination</em> position.</p>
+
+  <div class="term-compare reveal">
+    <div class="term-card fine">
+      <div class="term-badge">FINE</div>
+      <div class="term-title">Fine Termination</div>
+      <div class="term-body">The robot <strong style="color:#fff">stops completely</strong> at the destination before moving to the next position. The tool tip accelerates, decelerates as it approaches, and comes to a full stop. Use when precision at the point is critical (pick, place, weld).</div>
+    </div>
+    <div class="term-card cnt">
+      <div class="term-badge">CNT 0–100</div>
+      <div class="term-title">Continuous Termination</div>
+      <div class="term-body">The robot <strong style="color:#fff">does not stop</strong> at the destination — it decelerates, blends the motion, and accelerates toward the next position. CNT0 comes closest to the point (max decel); CNT100 is farthest (min decel). Use for smooth, fast paths.</div>
+    </div>
+  </div>
+
+  <!-- CNT slider demo -->
+  <div class="reveal">
+    <div class="sub-title" style="margin-top:0">CNT Value Interactive Demo</div>
+    <div class="cnt-demo">
+      <div class="cnt-label">ADJUST CNT VALUE — OBSERVE PATH DEVIATION</div>
+      <div class="cnt-value" id="cntVal">CNT 50</div>
+      <input type="range" id="cntSlider" min="0" max="100" value="50">
+      <div style="display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);margin-top:.25rem">
+        <span>CNT0 — Closest</span><span>CNT100 — Farthest</span>
+      </div>
+      <canvas id="cntCanvas" width="560" height="160" style="display:block;width:100%;margin-top:1rem;border:1px solid var(--border);border-radius:3px;background:#030a0f"></canvas>
+    </div>
+
+    <div class="note-box" style="margin-top:1rem">
+      <div class="bi">📌</div>
+      <div class="nt">The severity of the directional change at each taught position and the overall speed determine how strongly CNT affects the path.</div>
+    </div>
+    <div class="warn-box">
+      <div class="bi">⚠️</div>
+      <div class="wt"><strong>Warning:</strong> There may be inconsistencies between T1 testing and running in Auto. Always run programs in Auto at slow speeds first to verify the path.</div>
+    </div>
+
+    <div class="sub-title">Path Correction Approaches</div>
+    <div class="card-grid">
+      <div class="card"><div class="card-icon">📉</div><div class="card-title">Lower Rate / Speed</div><div class="card-body">Reduce the CNT value (e.g. CNT100 → CNT60) or lower the speed at the position (e.g. 2000 → 1200 mm/sec).</div></div>
+      <div class="card"><div class="card-icon">➕</div><div class="card-title">Add a Position</div><div class="card-body">Insert an additional waypoint near the problem area and touch up the original position to better define the intended path.</div></div>
+      <div class="card"><div class="card-icon">↔️</div><div class="card-title">Move the Position</div><div class="card-body">Touch up the affected position farther away from the current point to give the blending algorithm more room to work.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- LABS -->
+<section class="section" id="labs">
+  <div class="sec-label">Labs 18–21</div>
+  <h2 class="sec-title reveal">Chapter Labs</h2>
+
+  <div class="reveal">
+    <div class="lab-card">
+      <div class="lab-num">LAB 18</div>
+      <div class="lab-title">Creating Position Registers</div>
+      <div class="lab-body">Create Position Registers for Home, Repair, and Safe positions on a live FANUC robot and controller.</div>
+      <ol class="lab-steps">
+        <li><strong>Create PR[1] for Home Position</strong> — See Section 12.7.2 (pg. 196)</li>
+        <li><strong>Label</strong> the Position Register with an appropriate name</li>
+        <li><strong>Convert to Joint Representation</strong> — See Section 12.7.7 (pg. 199)</li>
+        <li><strong>Move robot away</strong>, then use MOVE TO to verify the recorded position — See Section 12.7.4 (pg. 197)</li>
+        <li><strong>Repeat Steps 2–4</strong> to create PR[2] Repair and PR[3] Safe</li>
+      </ol>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-num">LAB 19</div>
+      <div class="lab-title">Modify a Program</div>
+      <div class="lab-body">Modify the motion instructions of program A_BOX to use different speed values and termination types. No value may be repeated.</div>
+      <div class="prog-builder" style="margin-top:1rem">
+        <div class="prog-header">
+          <span class="prog-name-display">A_BOX — EXAMPLE MODIFIED</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">9 LINES</span>
+        </div>
+        <div class="prog-body" style="min-height:auto">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span><span style="color:var(--dim)">=</span><span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span><span style="color:var(--dim)">=</span><span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">3</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span class="pl-speed">88%</span>&nbsp;<span class="pl-term">CNT1</span></div>
+          <div class="pl"><span class="pl-num">5</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[3]</span>&nbsp;<span class="pl-speed">250mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">6</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[4]</span>&nbsp;<span class="pl-speed">50%</span>&nbsp;<span class="pl-term">CNT100</span></div>
+          <div class="pl"><span class="pl-num">7</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[5]</span>&nbsp;<span class="pl-speed">1000mm/sec</span>&nbsp;<span class="pl-term">CNT40</span></div>
+          <div class="pl"><span class="pl-num">8</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span class="pl-speed">1988mm/sec</span>&nbsp;<span class="pl-term">CNT0</span></div>
+          <div class="pl"><span class="pl-num">9</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT75</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-num">LAB 20</div>
+      <div class="lab-title">Create a Shapes Program (A_SHAPES)</div>
+      <div class="lab-body">Create a program that traces a square, circle, and triangle. The robot must start and end each shape at the HOME Position Register.</div>
+      <div class="prog-builder" style="margin-top:1rem">
+        <div class="prog-header">
+          <span class="prog-name-display">A_SHAPES</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">18 LINES</span>
+        </div>
+        <div class="prog-body" style="min-height:auto">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span><span style="color:var(--dim)">=</span><span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span><span style="color:var(--dim)">=</span><span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">3</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1:Square]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">5-8</span>&nbsp;<span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[2..4]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">9</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">10</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[5:Circle]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">11</span><span class="pl-motion">C</span>&nbsp;<span class="pl-pos">P[6]</span>&nbsp;<span class="pl-pos">:P[7]</span>&nbsp;<span class="pl-speed">1000mm/sec</span>&nbsp;<span class="pl-term">CNT100</span></div>
+          <div class="pl"><span class="pl-num">12</span><span class="pl-motion">C</span>&nbsp;<span class="pl-pos">P[8]</span>&nbsp;<span class="pl-pos">:P[5:Circle]</span>&nbsp;<span class="pl-speed">1000mm/sec</span>&nbsp;<span class="pl-term">CNT100</span></div>
+          <div class="pl"><span class="pl-num">13</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">14-17</span>&nbsp;<span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[9..11:Triangle]</span>&nbsp;<span class="pl-speed">500mm/sec</span>&nbsp;<span class="pl-term">CNT75</span></div>
+          <div class="pl"><span class="pl-num">18</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-num">LAB 21</div>
+      <div class="lab-title">Manipulate Individual Files</div>
+      <div class="lab-body">Save A_SHAPES as .TP and .LS files, and save Position Register data. Verify POSREG.VR appears in the directory.</div>
+      <ol class="lab-steps">
+        <li>Set the default device path to directory <strong>INDIVIDUAL_FILES</strong></li>
+        <li>Save A_SHAPES as a <strong>.TP File</strong> — See Section 11.10.1 (pg. 180)</li>
+        <li>Save A_SHAPES as a <strong>.LS File</strong> — See Section 11.10.1 (pg. 180)</li>
+        <li>Navigate to Position Register Screen → Press <strong>FCTN → Next → SAVE → ENTER</strong></li>
+        <li>Verify <strong>POSREG.VR</strong> is present in the directory from the file screen</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.9rem;margin-bottom:1.5rem">Test your understanding of Chapter 12: Motion Instructions.</p>
+  <div class="quiz-wrap reveal" id="qC"></div>
+</section>
+
+<div style="height:6rem;position:relative;z-index:10;text-align:center;padding-top:2rem">
+  <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);letter-spacing:.25em">FANUC AMERICA CORPORATION © 2020 — MATAGHAND0318CE — CHAPTER 12</span>
+</div>
+
+<script>
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  document.getElementById('pb').style.width=(window.scrollY/h*100)+'%';
+});
+
+// Particles
+for(let i=0;i<18;i++){
+  const p=document.createElement('div');
+  p.className='particle';
+  p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s;--drift:${(Math.random()-.5)*120}px`;
+  document.body.appendChild(p);
+}
+
+// Reveal on scroll
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('visible')}
+  });
+},{threshold:.12});
+document.querySelectorAll('.reveal,.step').forEach(el=>ro.observe(el));
+
+// Circle canvas visualizer
+(function(){
+  const cv=document.getElementById('circleCanvas');
+  if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const cx=W/2,cy=H/2,r=72;
+    // Grid
+    ctx.strokeStyle='rgba(0,212,255,.05)';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    // Labels
+    const labels=[
+      {angle:Math.PI,label:'P[1]\nSTART',col:'#ff6b00'},
+      {angle:Math.PI*1.5,label:'P[2]\nINTER1',col:'#00d4ff'},
+      {angle:0,label:"P[3]\nDEST1",col:'#00ff88'},
+      {angle:Math.PI*.5,label:'P[4]\nINTER2',col:'#a78bfa'},
+    ];
+
+    // Circle path
+    ctx.beginPath();
+    ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,212,255,.2)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+
+    // Animated robot position
+    const angle=-(t*0.018);
+    const rx=cx+Math.cos(angle)*r, ry=cy+Math.sin(angle)*r;
+
+    // Trail
+    ctx.beginPath();
+    for(let i=0;i<60;i++){
+      const a=angle+i*0.04;
+      const tx=cx+Math.cos(a)*r, ty=cy+Math.sin(a)*r;
+      if(i===0)ctx.moveTo(tx,ty); else ctx.lineTo(tx,ty);
+    }
+    ctx.strokeStyle='rgba(255,107,0,.6)';ctx.lineWidth=2;ctx.stroke();
+
+    // Points
+    labels.forEach(l=>{
+      const px=cx+Math.cos(l.angle)*r, py=cy+Math.sin(l.angle)*r;
+      ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);
+      ctx.fillStyle=l.col;ctx.fill();
+      ctx.strokeStyle='#030a0f';ctx.lineWidth=2;ctx.stroke();
+      const lines=l.label.split('\n');
+      ctx.fillStyle=l.col;ctx.font='bold 9px "Share Tech Mono"';ctx.textAlign='center';
+      const ox=l.angle===0?18:l.angle===Math.PI?-18:0;
+      const oy=l.angle===Math.PI*.5?18:l.angle===Math.PI*1.5?-14:0;
+      lines.forEach((ln,i)=>ctx.fillText(ln,px+ox,py+oy+(i*11)-4));
+    });
+
+    // Robot dot
+    ctx.beginPath();ctx.arc(rx,ry,5,0,Math.PI*2);
+    ctx.fillStyle='#ff6b00';ctx.fill();
+    ctx.beginPath();ctx.arc(rx,ry,10,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,107,0,.4)';ctx.lineWidth=1;ctx.stroke();
+
+    // Label
+    ctx.fillStyle='rgba(0,212,255,.6)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='top';
+    ctx.fillText('CIRCULAR MOTION VISUALIZATION — TWO HALF-CIRCLES = FULL CIRCLE',8,6);
+    t++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// CNT demo canvas
+(function(){
+  const slider=document.getElementById('cntSlider');
+  const valEl=document.getElementById('cntVal');
+  const cv=document.getElementById('cntCanvas');
+  if(!cv)return;
+  const ctx=cv.getContext('2d');
+
+  function drawCNT(val){
+    const W=cv.width,H=cv.height;
+    ctx.clearRect(0,0,W,H);
+    // P1 and P3 sit at mid-height; P2 is the apex (top)
+    const p1={x:60,y:H-36};
+    const p2={x:W/2,y:36};
+    const p3={x:W-60,y:H-36};
+    const blend=val/100;
+
+    // Dashed straight-line corners (the ideal programmed path)
+    ctx.setLineDash([3,5]);ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.lineTo(p3.x,p3.y);ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Points
+    [[p1,'P1','#ff6b00'],[p2,'P2','#00d4ff'],[p3,'P3','#00ff88']].forEach(([p,lbl,col])=>{
+      ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);
+      ctx.fillStyle=col;ctx.fill();
+      ctx.fillStyle=col;ctx.font='bold 9px "Share Tech Mono"';ctx.textAlign='center';
+      ctx.fillText(lbl,p.x,p.y+(lbl==='P2'?-12:16));
+    });
+
+    // CNT=0  → straight lines directly through P2 (two line segments, full stop shape)
+    // CNT=100 → smooth arc that passes furthest from P2 but still arches upward
+    // Control points: at CNT0 they sit right at P2 (curve passes through it);
+    // as CNT increases they pull toward the midpoint of P1→P3, staying above that line.
+    // The straight-line mid-Y between P1 and P3:
+    const midY=(p1.y+p3.y)/2; // same as H-36 since they're equal
+
+    // cp Y interpolates from p2.y (CNT0, touches apex) toward midY but never reaches it —
+    // cap at 78% of the distance so CNT100 still has a visible upward arch
+    const cpY=p2.y+(midY-p2.y)*blend*0.78;
+
+    // cp X stays at P2's X so the arch remains symmetric
+    const cp1x=p2.x;
+    const cp1y=cpY;
+    const cp2x=p2.x;
+    const cp2y=cpY;
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x,p1.y);
+    if(val===0){
+      // Two straight segments through P2
+      ctx.lineTo(p2.x,p2.y);
+      ctx.lineTo(p3.x,p3.y);
+    } else {
+      // Cubic bezier: both control points at the same interpolated apex X,Y
+      ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,p3.x,p3.y);
+    }
+    ctx.strokeStyle='#ff6b00';ctx.lineWidth=2.5;ctx.stroke();
+
+    // Label centred on the arc apex
+    ctx.fillStyle='rgba(255,107,0,.8)';ctx.font='bold 10px "Share Tech Mono"';ctx.textAlign='center';
+    ctx.fillText('CNT '+val+' PATH',W/2,cpY+18);
+  }
+
+  slider.addEventListener('input',()=>{
+    const v=parseInt(slider.value);
+    valEl.textContent='CNT '+v;
+    drawCNT(v);
+  });
+  drawCNT(50);
+})();
+
+// Quiz
+const Qs=[
+  {q:'Which motion type moves the TCP in a straight line from the start position to the destination position?',opts:['Joint','Linear','Circular','Spline'],correct:1,explain:'Linear motion (L) causes the robot to move the TCP in a perfectly straight line from start to destination. Speed is specified in velocity units like mm/sec.',wrongExplain:'Only Linear motion guarantees a straight-line path for the TCP. Joint motion moves all axes simultaneously but the path may not be straight. Circular moves in an arc.'},
+  {q:'In the circular motion instruction "C P[2] / P[3] 100mm/sec FINE", what is P[2]?',opts:['The destination position','The start position','The intermediate position','The home position'],correct:2,explain:'In a circular motion instruction, the first position listed (P[2] here) is always the INTERMEDIATE position — automatically recorded at the robot\'s current location when the instruction is added.',wrongExplain:'The first position in a circular instruction is the intermediate position (the point the arc passes through). The second position is the destination.'},
+  {q:'Fine termination type causes the robot to _______ at the destination before moving to the next position.',opts:['Slow down to 50%','Accelerate','Stop completely','Bypass the point'],correct:2,explain:'FINE termination causes the robot\'s tool tip to decelerate and come to a COMPLETE STOP at the recorded destination before the next motion instruction begins.',wrongExplain:'FINE means a full stop at the position — not a partial slowdown or bypass. This is critical when precision at the point matters.'},
+  {q:'What is the key difference between a Position P[n] and a Position Register PR[x]?',opts:['P[n] is faster to execute','PR[x] stores data locally; P[n] is global','P[n] is local to the program; PR[x] is globally accessible across all programs','PR[x] uses more memory than P[n]'],correct:2,explain:'A Position P[n] is LOCAL — it exists only within the program it was recorded in. A Position Register PR[x] is GLOBAL — the same PR ID can be accessed and used by any program on the controller.',wrongExplain:'The distinction is scope: P[n] = local (program-specific), PR[x] = global (shared across programs). This is why PRs are used for Home, Repair, and Safe positions.'},
+  {q:'If a motion statement programs 2000 mm/sec and the General Override is set to 50%, at what speed will the robot actually move?',opts:['2000 mm/sec','4000 mm/sec','1000 mm/sec','500 mm/sec'],correct:2,explain:'The General Override scales the programmed speed: 2000 mm/sec × 50% = 1000 mm/sec actual speed. The override is a percentage of the programmed speed allowed.',wrongExplain:'General Override multiplies against the programmed speed. 2000 × 0.50 = 1000 mm/sec.'},
+  {q:'To program a complete circle in FANUC, how many circular motion instructions are required?',opts:['One, with start and end points','Two half-circles, each with an intermediate and destination position','Three — one per quadrant plus a return','Four positions total but only one C instruction'],correct:1,explain:'A full circle requires TWO circular (C) motion instructions. Each C instruction defines one half of the circle using an intermediate position and a destination position.',wrongExplain:'Each C instruction covers a half-circle. Two halves = one full circle. You cannot program a full circle with a single C instruction in FANUC HandlingTool.'},
+  {q:'What happens when you convert a Position Register to Joint representation?',opts:['It becomes local to the current program','The robot moves faster to that position','The position resolves to the same physical location regardless of active User/Tool frames','The position data is deleted and must be re-recorded'],correct:2,explain:'Joint representation stores the position as absolute joint angles (degrees). This bypasses frame calculations entirely — the robot goes to the exact same physical location regardless of which USER or TOOL frame is currently active.',wrongExplain:'Joint representation = absolute position based on joint angles. Frames are irrelevant. This is how you create a truly global position like Home that must always be in the exact same spot.'},
+  {q:'At CNT0 vs CNT100, how does the robot\'s behavior differ?',opts:['CNT0 is fastest; CNT100 is slowest','CNT0 comes closest to the taught position with max decel; CNT100 deviates most with min decel','CNT100 stops at the point; CNT0 bypasses it entirely','There is no difference — both produce the same path'],correct:1,explain:'CNT0 approaches the taught position most closely, decelerating significantly before blending. CNT100 deviates the most from the taught point with minimal deceleration, producing the smoothest but least accurate blend.',wrongExplain:'Higher CNT = farther from the point, smoother blend, less deceleration. Lower CNT = closer to the point, more deceleration. CNT0 comes closest without actually stopping (that\'s FINE).'},
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{el.classList.add('locked');if(idx===q.correct)el.classList.add('correct');else if(idx===i&&idx!==q.correct)el.classList.add('wrong');});
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent2);text-shadow:var(--glow2);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 12: Motion Instructions.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

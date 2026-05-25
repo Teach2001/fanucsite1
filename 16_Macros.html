@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Macros — Chapter 16</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent2),var(--accent));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent2);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent2);text-shadow:var(--glow2)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent2);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow2),0 0 60px rgba(255,107,0,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent2)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(255,107,0,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(0,212,255,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent2);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent2),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent2),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent2);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent2);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow2);animation:pg 2s ease infinite}
+  .sdot.b{background:var(--accent);box-shadow:var(--glow)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}.sdot.p{background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.5)}.sdot.y{background:#facc15;box-shadow:0 0 12px rgba(250,204,21,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,107,0,.08);border:1px solid rgba(255,107,0,.5);border-left:3px solid var(--accent2);border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .info-box{background:rgba(255,107,0,.05);border:1px solid rgba(255,107,0,.25);border-left:3px solid var(--accent2);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .danger-box{background:rgba(255,50,50,.07);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0;animation:wp 3s ease infinite}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ffc080;line-height:1.7}.wt strong{color:#ffe0c0}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+  .it{font-size:.85rem;color:#ffc080;line-height:1.7}.it strong{color:#ffe0c0}
+  .dt{font-size:.85rem;color:#ff8888;line-height:1.7}.dt strong{color:#ffcccc}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  .terminal{background:#030a0f;border:1px solid var(--accent2);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .terminal.blue{border-color:var(--accent)}
+  .t-header{color:var(--accent2);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(255,107,0,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-header.blue{color:var(--accent);border-bottom-color:rgba(0,212,255,.2)}
+  .t-lbl{color:var(--accent)}.t-val{color:#fff}.t-ok{color:var(--accent3)}.t-warn{color:var(--accent2)}.t-dim{color:var(--dim)}
+
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent2),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent2);flex-shrink:0;box-shadow:var(--glow2);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+  .step-body .sub-step{margin-top:.4rem;padding:.4rem .7rem;background:rgba(0,212,255,.04);border-left:2px solid rgba(0,212,255,.2);font-size:.79rem;color:var(--dim);line-height:1.6}
+  .step-body .sub-step span{color:var(--accent2)}
+
+  /* Execution source cards */
+  .exec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+  .exec-card{border-radius:4px;padding:1.4rem;transition:transform .3s}
+  .exec-card:hover{transform:translateY(-3px)}
+  .exec-card.key{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .exec-card.mf{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .exec-card.di{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .exec-card.sop{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.35)}
+  .exec-card.prog{background:rgba(250,204,21,.06);border:1px solid rgba(250,204,21,.35)}
+  .ec-icon{font-size:1.8rem;margin-bottom:.4rem}
+  .ec-name{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em}
+  .exec-card.key .ec-name{color:var(--accent)}.exec-card.mf .ec-name{color:var(--accent2)}.exec-card.di .ec-name{color:var(--accent3)}.exec-card.sop .ec-name{color:#a78bfa}.exec-card.prog .ec-name{color:#facc15}
+  .ec-tag{font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:.1rem .35rem;border-radius:2px;display:inline-block;margin-bottom:.5rem;border:1px solid currentColor;opacity:.7}
+  .exec-card.key .ec-tag{color:var(--accent)}.exec-card.mf .ec-tag{color:var(--accent2)}.exec-card.di .ec-tag{color:var(--accent3)}.exec-card.sop .ec-tag{color:#a78bfa}.exec-card.prog .ec-tag{color:#facc15}
+  .ec-body{font-size:.8rem;color:var(--dim);line-height:1.7}
+
+  /* Macro table simulator */
+  .macro-table{width:100%;border-collapse:collapse;font-size:.8rem;background:#030a0f;border:1px solid var(--border);border-radius:4px;overflow:hidden;font-family:'Share Tech Mono',monospace}
+  .macro-table th{font-size:.63rem;letter-spacing:.15em;color:var(--accent2);text-align:left;padding:.55rem .9rem;background:rgba(255,107,0,.06);border-bottom:1px solid var(--border)}
+  .macro-table td{padding:.6rem .9rem;border-bottom:1px solid rgba(26,58,92,.25);color:var(--text)}
+  .macro-table tr:hover td{background:rgba(0,212,255,.03)}
+  .macro-table td:first-child{color:var(--dim);min-width:2.5rem;text-align:right;padding-right:.5rem}
+  .mt-name{color:#fff}.mt-prog{color:var(--accent2)}.mt-assign{color:var(--accent3)}.mt-empty{color:var(--dim);opacity:.5}.mt-sys{color:#a78bfa}
+
+  /* Interactive macro builder */
+  .builder-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .builder-header{background:rgba(255,107,0,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .builder-title{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--accent2);letter-spacing:.15em}
+  .builder-body{padding:1.2rem}
+  .form-row{display:flex;flex-direction:column;gap:.3rem;margin-bottom:1rem}
+  .form-row label{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+  .form-row input,.form-row select{background:#030a0f;border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:.8rem;padding:.5rem .8rem;outline:none;transition:border-color .2s;width:100%}
+  .form-row input:focus,.form-row select:focus{border-color:var(--accent2)}
+  .form-row select option{background:#030a0f}
+  .add-btn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.55rem 1.3rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.08);color:var(--accent2);cursor:pointer;transition:all .2s;box-shadow:var(--glow2)}
+  .add-btn:hover{background:rgba(255,107,0,.15)}
+  .clear-btn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.55rem 1.3rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s;margin-left:.5rem}
+  .clear-btn:hover{border-color:#ff3232;color:#ff8888}
+
+  /* Teach pendant visual */
+  .pendant-wrap{display:flex;justify-content:center;margin:1.5rem 0}
+  .pendant{background:var(--panel);border:2px solid var(--border);border-radius:12px;padding:1.2rem;width:260px;position:relative}
+  .pendant-screen{background:#030a0f;border:1px solid var(--accent);border-radius:4px;padding:.7rem .9rem;font-family:'Share Tech Mono',monospace;font-size:.68rem;line-height:1.8;margin-bottom:1rem;min-height:90px;color:var(--text)}
+  .pendant-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem}
+  .pkey{background:#0a1a28;border:1px solid var(--border);border-radius:3px;padding:.35rem .2rem;font-family:'Orbitron',sans-serif;font-size:.5rem;color:var(--dim);text-align:center;cursor:pointer;transition:all .2s;user-select:none;line-height:1.3}
+  .pkey:hover{border-color:var(--accent2);color:var(--accent2)}
+  .pkey.active{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.08)}
+  .pkey.uk{border-color:rgba(0,212,255,.3);color:var(--accent)}
+  .pkey.uk.active{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.08)}
+  .pkey.shift-key{border-color:rgba(255,107,0,.4);color:var(--accent2);grid-column:span 2}
+  .pkey.shift-key.active{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.08)}
+  .pendant-label{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--dim);text-align:center;margin-top:.7rem;letter-spacing:.15em}
+
+  /* Program display */
+  .prog-builder{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .prog-header{background:rgba(255,107,0,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .prog-name-display{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--accent2);letter-spacing:.15em}
+  .prog-body{padding:1rem 1.2rem;font-family:'Share Tech Mono',monospace;font-size:.78rem}
+  .pl{line-height:2.1;display:flex;gap:.6rem;align-items:center}
+  .pl-num{color:var(--dim);min-width:2rem;text-align:right;flex-shrink:0}
+  .pl-kw{color:var(--accent2)}.pl-motion{color:var(--accent)}.pl-pos{color:#a78bfa}.pl-macro{color:#facc15;font-weight:600}.pl-io{color:var(--accent3)}.pl-end{color:var(--dim)}
+
+  /* Lab card */
+  .lab-card{background:var(--panel);border:1px solid rgba(0,255,136,.3);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+  .lab-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent3),transparent)}
+  .lab-num{font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--accent3);letter-spacing:.2em;margin-bottom:.3rem}
+  .lab-title{font-family:'Orbitron',sans-serif;font-size:1rem;color:#fff;margin-bottom:.8rem}
+  .lab-body{font-size:.85rem;color:var(--dim);line-height:1.8}
+  .lab-steps{margin-top:1rem;display:flex;flex-direction:column;gap:.4rem;padding-left:1.2rem}
+  .lab-steps li{font-size:.82rem;color:var(--dim);line-height:1.7}
+  .lab-steps li strong{color:var(--text)}
+  .lab-sub{margin-top:.3rem;padding-left:1.2rem;display:flex;flex-direction:column;gap:.25rem}
+  .lab-sub li{font-size:.8rem;color:var(--dim);line-height:1.6;list-style:lower-alpha}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem;margin-top:1rem}
+  .quiz-q{font-size:.98rem;color:#fff;font-weight:600;line-height:1.6;margin-bottom:1.5rem}
+  .quiz-opts{display:flex;flex-direction:column;gap:.75rem}
+  .quiz-opt{display:flex;align-items:center;gap:.9rem;padding:.9rem 1.1rem;background:#030a0f;border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .2s;font-size:.85rem;color:var(--dim)}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent2);color:#fff;background:rgba(255,107,0,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.06)}
+  .quiz-opt.wrong{border-color:#ff3232;color:#ff8888;background:rgba(255,50,50,.06)}
+  .quiz-opt.locked{cursor:default}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;width:1.6rem;height:1.6rem;border-radius:50%;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .quiz-fb{margin-top:1.2rem;font-size:.85rem;line-height:1.7;border-radius:3px;padding:0;max-height:0;overflow:hidden;transition:all .4s ease;opacity:0}
+  .quiz-fb.show{max-height:220px;padding:.9rem 1.1rem;opacity:1}
+  .quiz-fb.good{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.3);color:var(--accent3)}
+  .quiz-fb.bad{background:rgba(255,50,50,.07);border:1px solid rgba(255,50,50,.3);color:#ff8888}
+  .quiz-nav{margin-top:1.2rem;display:flex;gap:.8rem;justify-content:flex-end}
+  .qbtn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.5rem 1.2rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s}
+  .qbtn:hover,.qbtn.pri{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.08)}
+  .qbtn.pri{box-shadow:var(--glow2)}
+
+  @media(max-width:768px){nav .nav-links{display:none}.exec-grid{grid-template-columns:1fr 1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+
+<nav>
+  <a class="nav-logo" href="#">FANUC // CH.16</a>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#creating">Creating</a></li>
+    <li><a href="#assignments">Assignments</a></li>
+    <li><a href="#instruction">Instruction</a></li>
+    <li><a href="#simulator">Simulator</a></li>
+    <li><a href="#lab">Lab</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool — Chapter 16</div>
+  <h1>16: <span>Macros</span></h1>
+  <div class="hero-sub">Create · Assign · Execute — Automated Shortcut Programs</div>
+  <div class="hero-cw">
+    <div class="terminal" style="min-width:340px;text-align:left">
+      <div class="t-header">MACRO COMMAND TABLE</div>
+      <div style="display:grid;grid-template-columns:1.2rem 1fr 1fr 1fr;gap:.3rem .7rem;font-size:.72rem">
+        <span class="t-dim">#</span><span class="t-warn">INSTRUCTION NAME</span><span class="t-warn">PROGRAM</span><span class="t-warn">ASSIGN</span>
+        <span class="t-dim">1</span><span class="t-val">Open hand 1</span><span class="t-lbl">GRIP_OPEN</span><span class="t-ok">MF[1]</span>
+        <span class="t-dim">2</span><span class="t-val">Close hand 1</span><span class="t-lbl">GRIP_CLOSE</span><span class="t-ok">MF[2]</span>
+        <span class="t-dim">7</span><span class="t-val">Gripper will open</span><span class="t-lbl">GRIPPER</span><span class="t-ok">UK[1]</span>
+        <span class="t-dim">8</span><span class="t-dim">[ ]</span><span class="t-dim">[ ]</span><span class="t-dim">--[0]</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO EXPLORE ▼</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section" id="overview">
+  <div class="sec-label">16.1 / 16.2 — Overview</div>
+  <h2 class="sec-title reveal">Macro Overview</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">A macro is typically an <strong style="color:#fff">easily initiated, concise program</strong> used to perform an often-repeated function. Any program can be assigned as a Macro. To use a macro you must write it, set it up on the Macro Table, and execute it.</p>
+
+  <div class="sub-title reveal">Execution Sources — Where Can Macros Run From?</div>
+  <div class="exec-grid reveal">
+    <div class="exec-card key">
+      <div class="ec-icon">⌨️</div>
+      <div class="ec-name">Teach Pendant Keys</div>
+      <div class="ec-tag">Manual Mode</div>
+      <div class="ec-body">User Keys 1–7 (UK) or Shift + User Keys 1–7 (SU). Motion programs must use SU assignment. UK programs cannot contain motion and must have group mask [*,*,*,*,*].</div>
+    </div>
+    <div class="exec-card mf">
+      <div class="ec-icon">🖥️</div>
+      <div class="ec-name">Manual Functions Screen</div>
+      <div class="ec-tag">Manual Mode — MF</div>
+      <div class="ec-body">Accessed via MENU → MANUAL FCTNS. Press SHIFT + F3 (EXEC) to run. Assignment code is MF.</div>
+    </div>
+    <div class="exec-card di">
+      <div class="ec-icon">⚡</div>
+      <div class="ec-name">Input Signal</div>
+      <div class="ec-tag">Automatic Mode</div>
+      <div class="ec-body">Triggered when a Digital Input (DI), Robot Input (RI), or User Operator Panel Input (UI) signal is received. Up to 10 by default; controlled via $MACROMAXDRI.</div>
+    </div>
+    <div class="exec-card sop">
+      <div class="ec-icon">🔘</div>
+      <div class="ec-name">SOP Buttons</div>
+      <div class="ec-tag">Automatic — SOP 4/5</div>
+      <div class="ec-body">Standard Operator Panel buttons SOP 4 and SOP 5. Assignment only available on RJ3iB and older controllers.</div>
+    </div>
+    <div class="exec-card prog">
+      <div class="ec-icon">📄</div>
+      <div class="ec-name">Macro Command Instruction</div>
+      <div class="ec-tag">In-Program Call</div>
+      <div class="ec-body">Called within another TP program using the MACRO instruction. Behaves identically to a CALL instruction but is referenced by Instruction Name from the Macro Table.</div>
+    </div>
+  </div>
+
+  <div class="note-box reveal">
+    <div class="bi">📌</div>
+    <div class="nt"><strong>System-level macros</strong> are application-specific, predefined instructions identified with the letter <strong>"s"</strong> at the far right of the Macro SETUP screen. You cannot change their instruction name or program.</div>
+  </div>
+
+  <div class="sub-title reveal">Three Steps to Use a Macro</div>
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent2);font-weight:900">1</div>
+      <div class="card-title">Write the Program</div>
+      <div class="card-body">Create a Teach Pendant program with the subtype set to Macro. Any program content is valid — motion, I/O, logic, etc.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent2);font-weight:900">2</div>
+      <div class="card-title">Assign on the Table</div>
+      <div class="card-body">Go to MENU → SETUP → MACRO. Place the program in the Macro Command Table and configure the Instruction Name and the assignment type (UK, SU, MF, DI, etc.).</div>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="font-family:'Orbitron',sans-serif;font-size:1.8rem;color:var(--accent2);font-weight:900">3</div>
+      <div class="card-title">Execute</div>
+      <div class="card-body">Trigger the macro using the assigned method — press the user key, activate an input signal, select from Manual Functions, or call it from within a program.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CREATING A MACRO -->
+<section class="section" id="creating">
+  <div class="sec-label">16.3 — Creating a Macro</div>
+  <h2 class="sec-title reveal">Creating a Macro Program</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Creating a Macro is very similar to creating a regular Teach Pendant program. Any program can be used as a Macro — the key difference is setting the <strong style="color:var(--accent2)">subtype to Macro</strong> in the program detail screen.</p>
+
+  <div class="note-box reveal">
+    <div class="bi">📌</div>
+    <div class="nt">If you create a program from the Select menu with <strong>F1 [TYPE] set to Macro</strong>, the subtype is assigned automatically. Similarly, any program placed on the Macro Table is automatically given the subtype Macro.</div>
+  </div>
+
+  <div class="two-col reveal" style="margin-top:2rem">
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 16-1: Creating a Macro Program</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press the SELECT key</strong><p>Navigate to the Program Select screen.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F2, CREATE</strong><p>If F2 is not displayed, press NEXT first.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Enter a descriptive program name</strong><p>Naming conventions are the same as for regular TP programs. Choose something that describes the macro's function.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Press F2, DETAIL</strong><p>Opens the program detail / header screen.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Cursor to Sub type → F4 [CHOICE]</strong><p>A list of subtypes will appear.</p></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Select MACRO from the list</strong><p>Options shown: None, Collection, Macro, Cond.</p></div></div>
+        <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Press F2, END</strong><p>Returns to the program editor. Add instructions to the macro program as needed.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Program Detail Screen</div>
+      <div class="terminal blue">
+        <div class="t-header blue">PROGRAM DETAIL — MACRO_EXAMPLE</div>
+        <div><span class="t-dim">Creation Date:  </span><span class="t-val">13-Jul-2018</span></div>
+        <div><span class="t-dim">Modification:   </span><span class="t-val">13-Jul-2018</span></div>
+        <div><span class="t-dim">Source:         </span><span class="t-val">--</span></div>
+        <div><span class="t-dim">Positions: </span><span class="t-warn">FALSE</span><span class="t-dim">  Size: </span><span class="t-val">132 Byte</span></div>
+        <div><span class="t-dim">Program Name:   </span><span class="t-warn">MACRO_EXAMPLE</span></div>
+        <div><span class="t-dim">Sub type:       </span><span class="t-ok">[ Macro ]</span><span class="t-dim">  ← Set this</span></div>
+        <div><span class="t-dim">Comment:        </span><span class="t-val">[              ]</span></div>
+        <div><span class="t-dim">Group mask:     </span><span class="t-val">[1,*,*,*,*,*,*,*]</span></div>
+      </div>
+      <div class="info-box" style="margin-top:1rem">
+        <div class="bi">⚡</div>
+        <div class="it">The <strong>Sub type</strong> field is what designates a program as a Macro. Without it, the program won't appear in the Macro list when assigning on the Macro Table.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ASSIGNMENTS -->
+<section class="section" id="assignments">
+  <div class="sec-label">16.4 — Macro Assignments</div>
+  <h2 class="sec-title reveal">Macro Assignments</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Before a Macro can be "fully functioning" it must be <strong style="color:#fff">assigned on the Macro Table</strong>. One program can be assigned to <em>multiple</em> execution methods simultaneously — for example, a HOME program assigned to both a SU key (manual) and a DI signal (automatic).</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Manual Mode Assignments</div>
+      <ul class="specs-list">
+        <li class="spec-item">
+          <div class="sdot b"></div>
+          <div class="spec-text">
+            <strong>UK[1]–UK[7] — User Key (alone)</strong>
+            <span>Up to 7 macros mapped to teach pendant user keys. <strong style="color:#fff">Cannot contain motion instructions.</strong> Group mask must be [*,*,*,*,*].</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot"></div>
+          <div class="spec-text">
+            <strong>SU[1]–SU[7] — Shift + User Key</strong>
+            <span>Up to 7 macros triggered by SHIFT + user key. Can contain motion instructions. Suitable for programs that move the robot.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot p"></div>
+          <div class="spec-text">
+            <strong>MF — Manual Functions Screen</strong>
+            <span>Listed on the MANUAL FCTNS macro screen. Press SHIFT + F3 (EXEC) to run. Useful for operator-initiated routines without a dedicated key.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Automatic Mode Assignments</div>
+      <ul class="specs-list">
+        <li class="spec-item">
+          <div class="sdot g"></div>
+          <div class="spec-text">
+            <strong>DI[x] — Digital Input</strong>
+            <span>Executes when the specified DI signal is received. Indexes 0–999 available (0 = no assignment). Input must be properly configured.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot g"></div>
+          <div class="spec-text">
+            <strong>RI[x] — Robot Input</strong>
+            <span>Executes on robot input signal. Maximum 24 in some configurations. Indexes 0 through the configured number of RI signals.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot g"></div>
+          <div class="spec-text">
+            <strong>UI[x] — User Operator Panel Input</strong>
+            <span>Available on some systems. Indexes 0 through the number of configured UOP input signals.</span>
+          </div>
+        </li>
+        <li class="spec-item">
+          <div class="sdot y"></div>
+          <div class="spec-text">
+            <strong>SP — SOP Buttons (SOP 4 / SOP 5)</strong>
+            <span>Standard Operator Panel buttons. Available on RJ3iB and older controllers only.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="danger-box reveal" style="margin-top:2rem">
+    <div class="bi">⚠️</div>
+    <div class="dt"><strong>CAUTION:</strong> Make certain that your application has not already assigned functions to the teach pendant user keys; otherwise, execution problems can occur. If making a UK assignment ensure the Group Mask is [*,*,*,*,*,*,*,*].</div>
+  </div>
+
+  <!-- Procedure 16-2 -->
+  <div class="sub-title reveal">Procedure 16-2: Making a Macro Assignment</div>
+  <div class="two-col reveal">
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press MENU → SETUP → MACRO → ENTER</strong><p>Navigate through the flyout menu to reach the Macro Command Table.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Review the Macro Command Table</strong><p>Default items may be listed. Lines with a blank Program column are unassigned.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Cursor to open line in Program column</strong><p>Find an unassigned row (--[0] in the Assign column).</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Press F4 [CHOICE] → select program</strong><p>If your program is not listed, press F2 MACRO to filter for Macro-subtype programs. Highlight the target and press ENTER.</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Program and Instruction Name fill automatically</strong><p>The Instruction Name column is populated from the program name. If the name already exists, it is left blank with a warning.</p></div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Edit the Instruction Name (descriptive)</strong><p>Make the name clearly describe what the macro does. No naming convention rules apply here. This name appears in the MANUAL FCTNS table and in the MACRO Call instruction.</p></div></div>
+      <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Cursor to Assign column → F4 [CHOICE]</strong><p>Two-part assignment. First field: choose type (UK, SU, MF, SP, DI, RI). Second field: enter the number.</p><div class="sub-step">Types: <span>UK / SU / MF / SP / DI / RI</span></div></div></div>
+      <div class="step"><div class="step-num">8</div><div class="step-body"><strong>Enter the assignment number in the second field</strong><p>E.g., for UK[1] choose type UK then enter 1.</p></div></div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Macro Command Table — Example</div>
+      <table class="macro-table">
+        <thead>
+          <tr><th>#</th><th>Instruction Name</th><th>Program</th><th>Assign</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td class="mt-name">Open hand 1</td><td class="mt-prog">[GRIP_OPEN]</td><td class="mt-assign">MF[1]</td></tr>
+          <tr><td>2</td><td class="mt-name">Close hand 1</td><td class="mt-prog">[GRIP_CLOSE]</td><td class="mt-assign">MF[2]</td></tr>
+          <tr><td>3</td><td class="mt-name mt-sys">Relax hand 1 <span style="font-size:.6rem;color:#a78bfa">s</span></td><td class="mt-prog">[RELAX]</td><td class="mt-assign">MF[3]</td></tr>
+          <tr><td>4</td><td class="mt-name">Open hand 2</td><td class="mt-prog">[GRIP2_OPEN]</td><td class="mt-assign">MF[11]</td></tr>
+          <tr><td>5</td><td class="mt-name">Close hand 2</td><td class="mt-prog">[GRIP2_CLOSE]</td><td class="mt-assign">MF[12]</td></tr>
+          <tr><td>6</td><td class="mt-name">Relax hand 2</td><td class="mt-prog">[RELAX2]</td><td class="mt-assign">MF[13]</td></tr>
+          <tr><td>7</td><td class="mt-name">Gripper will open</td><td class="mt-prog">[GRIPPER]</td><td class="mt-assign">UK[1]</td></tr>
+          <tr><td>8</td><td class="mt-empty">[ ]</td><td class="mt-empty">[ ]</td><td class="mt-empty">--[0]</td></tr>
+          <tr><td>9</td><td class="mt-empty">[ ]</td><td class="mt-empty">[ ]</td><td class="mt-empty">--[0]</td></tr>
+          <tr><td>10</td><td class="mt-empty">[ ]</td><td class="mt-empty">[ ]</td><td class="mt-empty">--[0]</td></tr>
+        </tbody>
+      </table>
+      <div class="note-box" style="margin-top:.8rem">
+        <div class="bi">📌</div>
+        <div class="nt">If you change existing assignments on the Macro Table, you may alter how your system functions. Review current assignments carefully before modifying.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teach pendant visual -->
+  <div class="sub-title reveal" style="text-align:center">Teach Pendant User Key Layout</div>
+  <div class="pendant-wrap reveal">
+    <div class="pendant">
+      <div class="pendant-screen" id="pendantScreen">
+        // Press a UK or SU key to<br>// see assignment info.<br>
+      </div>
+      <div class="pendant-keys">
+        <div class="pkey uk" onclick="pendantPress('TOOL 1','UK[1] / SU[1]','TOOL1 key — top left. UK[1] runs macro alone; SU[1] runs with SHIFT.')">TOOL<br>1<br><span style="font-size:.4rem;color:var(--dim)">UK1/SU1</span></div>
+        <div class="pkey uk" onclick="pendantPress('TOOL 2','UK[2] / SU[2]','TOOL2 key. Commonly used for gripper open/close or tool change macros.')">TOOL<br>2<br><span style="font-size:.4rem;color:var(--dim)">UK2/SU2</span></div>
+        <div class="pkey uk" onclick="pendantPress('MOVE MENU','UK[3] / SU[3]','MOVE MENU key. UK[3] = alone (no motion); SU[3] = SHIFT+key (motion ok).')">MOVE<br>MENU<br><span style="font-size:.4rem;color:var(--dim)">UK3/SU3</span></div>
+        <div class="pkey uk" onclick="pendantPress('SETUP','UK[4] / SU[4]','SETUP key. Map to safe-position or repair-position macros.')">SETUP<br><br><span style="font-size:.4rem;color:var(--dim)">UK4/SU4</span></div>
+        <div class="pkey uk" onclick="pendantPress('POS','UK[7] / SU[7]','POS key (bottom-left of this group).')">POS<br><br><span style="font-size:.4rem;color:var(--dim)">UK7/SU7</span></div>
+        <div class="pkey uk" onclick="pendantPress('I/O','UK[6] / SU[6]','I/O key. Middle bottom.')">I/O<br><br><span style="font-size:.4rem;color:var(--dim)">UK6/SU6</span></div>
+        <div class="pkey uk" onclick="pendantPress('STATUS','UK[5] / SU[5]','STATUS key. Bottom right of UK group.')">STATUS<br><br><span style="font-size:.4rem;color:var(--dim)">UK5/SU5</span></div>
+        <div class="pkey" style="background:transparent;border:none"></div>
+        <div class="pkey shift-key" onclick="pendantPress('SHIFT','SHIFT Key','Hold SHIFT while pressing a UK key to trigger the SU[x] macro instead.')">SHIFT (hold for SU macros)</div>
+        <div class="pkey" style="background:transparent;border:none"></div>
+      </div>
+      <div class="pendant-label">FANUC TEACH PENDANT — UK/SU MACRO KEYS</div>
+    </div>
+  </div>
+</section>
+
+<!-- MACRO COMMAND INSTRUCTION -->
+<section class="section" id="instruction">
+  <div class="sec-label">16.5 — Macro Command Instruction</div>
+  <h2 class="sec-title reveal">Macro Command Instruction</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Once a Macro assignment is made on the Macro Table, it can also be <strong style="color:#fff">called directly from within a TP program</strong> using the MACRO instruction. It executes identically to a CALL instruction — the only difference is how the line appears (by Instruction Name, not program name).</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 16-3: Programming a Macro Command Instruction</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor on target line → F1 [INST]</strong><p>Press NEXT if INST isn't shown on F1.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Navigate to page 2 on [INST] menu</strong><p>The MACRO option is on the second page of instructions.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Select MACRO (option 6)</strong><p>The instruction list: 1-Skip, 2-Payload, 3-Offset/Frames, 4-Multiple control, 5-Program control, <strong style="color:var(--accent2)">6-MACRO</strong>, 7-FOR/ENDFOR…</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Choose the program by Instruction Name</strong><p>Programs are listed by their Instruction Name as defined on the Macro Table — not by program filename.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Instruction is added to the program</strong><p>The line shows the Instruction Name and executes identically to a CALL.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Example: A_PICK_PART with Macro Call</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <div class="prog-name-display">A_PICK_PART</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">10/13</div>
+        </div>
+        <div class="prog-body">
+          <div class="pl"><span class="pl-num">2:</span><span style="color:#a78bfa;font-family:'Share Tech Mono',monospace">UTOOL_NUM=1</span></div>
+          <div class="pl"><span class="pl-num">3:</span><span class="pl-end"></span></div>
+          <div class="pl"><span class="pl-num">4:</span><span class="pl-motion">J PR[1] 100% FINE</span></div>
+          <div class="pl"><span class="pl-num">5:</span><span class="pl-motion">J P[1] 100% CNT50</span></div>
+          <div class="pl"><span class="pl-num">6:</span><span class="pl-motion">L @P[2:Pick Pos] 250mm/sec FINE</span></div>
+          <div class="pl"><span class="pl-num">7:</span><span class="pl-io">RO[1]=OFF</span></div>
+          <div class="pl"><span class="pl-num">8:</span><span class="pl-motion">J P[3] 100% CNT50</span></div>
+          <div class="pl"><span class="pl-num">9:</span><span class="pl-motion">L @P[4:Place Pos] 250mm/sec FINE</span></div>
+          <div class="pl"><span class="pl-num">10:</span><span class="pl-macro">Gripper will open</span><span style="color:var(--dim);margin-left:.5rem;font-size:.7rem">// MACRO call</span></div>
+          <div class="pl"><span class="pl-num">11:</span><span class="pl-motion">J P[3] 100% CNT50</span></div>
+          <div class="pl"><span class="pl-num"></span><span class="pl-end">[End]</span></div>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:.8rem">
+        <div class="bi">📌</div>
+        <div class="nt">Line 10 <strong>"Gripper will open"</strong> is the Instruction Name from the Macro Table — not the program name. It runs the GRIPPER program exactly like a CALL instruction would.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INTERACTIVE SIMULATOR -->
+<section class="section" id="simulator">
+  <div class="sec-label">Interactive</div>
+  <h2 class="sec-title reveal">Macro Table Simulator</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:1.5rem">Build your own Macro Command Table entries below. Choose a program name, write an instruction name, and select an assignment type to see how the table is populated.</p>
+
+  <div class="builder-wrap reveal">
+    <div class="builder-header">
+      <div class="builder-title">MACRO COMMAND TABLE — BUILDER</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)" id="tableCount">0 / 150 entries</div>
+    </div>
+    <div class="builder-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.8rem;align-items:end;margin-bottom:1rem">
+        <div class="form-row">
+          <label>Program Name</label>
+          <input id="inp-prog" type="text" placeholder="e.g. GRIPPER_OPEN" maxlength="24">
+        </div>
+        <div class="form-row">
+          <label>Instruction Name</label>
+          <input id="inp-name" type="text" placeholder="e.g. Open gripper" maxlength="32">
+        </div>
+        <div class="form-row">
+          <label>Assignment Type</label>
+          <select id="inp-type">
+            <option value="MF">MF — Manual Function</option>
+            <option value="UK">UK — User Key (alone)</option>
+            <option value="SU">SU — Shift + User Key</option>
+            <option value="DI">DI — Digital Input</option>
+            <option value="RI">RI — Robot Input</option>
+            <option value="UI">UI — UOP Input</option>
+            <option value="SP">SP — SOP Button</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Number</label>
+          <input id="inp-num" type="number" min="1" max="150" value="1" style="width:70px">
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:1.5rem">
+        <button class="add-btn" onclick="addMacroEntry()">+ ADD ENTRY</button>
+        <button class="clear-btn" onclick="clearTable()">CLEAR TABLE</button>
+      </div>
+      <table class="macro-table" style="margin-top:.5rem">
+        <thead>
+          <tr><th>#</th><th>Instruction Name</th><th>Program</th><th>Assign</th></tr>
+        </thead>
+        <tbody id="macroTableBody">
+          <tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.2rem;font-size:.8rem">// No entries yet — add one above</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- LAB -->
+<section class="section" id="lab">
+  <div class="sec-label">Lab 29</div>
+  <h2 class="sec-title reveal">Lab Exercise</h2>
+
+  <div class="lab-card reveal">
+    <div class="lab-num">LAB 29</div>
+    <div class="lab-title">Macro Assignments</div>
+    <div class="lab-body">Create and assign multiple Macro programs, mapping them to various execution methods on the FANUC controller.</div>
+    <ol class="lab-steps">
+      <li><strong>Create three Macro Programs</strong> (See Section 16.3, pg. 275)
+        <ul class="lab-sub">
+          <li>HOME</li>
+          <li>REPAIR</li>
+          <li>SAFE</li>
+        </ul>
+      </li>
+      <li><strong>In each program</strong>, record the applicable Position Register created during Lab 18</li>
+      <li><strong>Assign HOME as:</strong>
+        <ul class="lab-sub">
+          <li>A MANUAL FUNCTION (See 16.4.2, pg. 278)</li>
+          <li>A Digital Input (See 16.4.3, pg. 278)</li>
+        </ul>
+      </li>
+      <li><strong>Assign REPAIR as:</strong>
+        <ul class="lab-sub">
+          <li>A Shift User Key (See 16.4.1, pg. 277)</li>
+          <li>A Digital Input</li>
+        </ul>
+      </li>
+      <li><strong>Assign SAFE as:</strong>
+        <ul class="lab-sub">
+          <li>A Shift User Key</li>
+          <li>A Digital Input</li>
+        </ul>
+      </li>
+      <li><strong>Assign A_GRIP_OPEN as UK[1]</strong>, with instruction name <em>'Gripper will Open'</em> (See 16.4.4, pg. 279)</li>
+      <li><strong>Assign A_GRIP_CLOSE as UK[2]</strong>, with instruction name <em>'Gripper will Close'</em></li>
+      <li><strong>Test all assignments</strong> — verify each macro executes correctly from its assigned trigger</li>
+    </ol>
+  </div>
+
+  <div class="note-box reveal">
+    <div class="bi">📌</div>
+    <div class="nt">Remember: programs assigned to <strong>UK[x]</strong> (user key alone) cannot contain motion instructions and must have a group mask of <strong>[*,*,*,*,*]</strong>. Programs that move the robot must use <strong>SU[x]</strong> (SHIFT + key) assignments.</div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">16.6 — Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <div class="quiz-wrap reveal">
+    <div id="qC"></div>
+  </div>
+</section>
+
+<footer style="position:relative;z-index:10;text-align:center;padding:3rem 2rem;border-top:1px solid var(--border)">
+  <div style="font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim)">FANUC AMERICA CORPORATION © 2020 — MATAGHAND0318CE — DO NOT DUPLICATE</div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:rgba(74,106,122,.5);margin-top:.5rem;letter-spacing:.15em">CHAPTER 16: MACROS — HANDLINGTOOL</div>
+</footer>
+
+<script>
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const s=document.documentElement,b=document.body;
+  const p=(s.scrollTop||b.scrollTop)/(s.scrollHeight-s.clientHeight)*100;
+  document.getElementById('pb').style.width=p+'%';
+});
+
+// Particles
+for(let i=0;i<18;i++){
+  const p=document.createElement('div');
+  p.className='particle';
+  p.style.cssText=`left:${Math.random()*100}%;animation-duration:${6+Math.random()*10}s;animation-delay:${Math.random()*6}s;--drift:${(Math.random()-.5)*120}px`;
+  document.body.appendChild(p);
+}
+
+// Reveal on scroll
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:.12});
+document.querySelectorAll('.reveal,.step').forEach(el=>ro.observe(el));
+
+// Pendant
+function pendantPress(keyName, assignment, desc){
+  document.querySelectorAll('.pkey').forEach(k=>k.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('pendantScreen').innerHTML=
+    `<span style="color:var(--accent2)">${keyName}</span><br>`+
+    `<span style="color:var(--accent3)">${assignment}</span><br><br>`+
+    `<span style="color:var(--dim);font-size:.65rem">${desc}</span>`;
+}
+
+// Macro table builder
+let entries=[];
+function addMacroEntry(){
+  const prog=document.getElementById('inp-prog').value.trim().toUpperCase();
+  const name=document.getElementById('inp-name').value.trim();
+  const type=document.getElementById('inp-type').value;
+  const num=parseInt(document.getElementById('inp-num').value)||1;
+  if(!prog||!name){alert('Please enter both a Program Name and Instruction Name.');return;}
+  if(entries.length>=10){alert('Table demo is limited to 10 entries.');return;}
+  entries.push({prog,name,type,num});
+  renderMacroTable();
+  document.getElementById('inp-prog').value='';
+  document.getElementById('inp-name').value='';
+  document.getElementById('inp-num').value=entries.length+1;
+}
+function clearTable(){entries=[];renderMacroTable();}
+function renderMacroTable(){
+  const tb=document.getElementById('macroTableBody');
+  document.getElementById('tableCount').textContent=entries.length+' / 150 entries';
+  if(!entries.length){
+    tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:1.2rem;font-size:.8rem">// No entries yet — add one above</td></tr>';
+    return;
+  }
+  const assignColor={'MF':'var(--accent2)','UK':'var(--accent)','SU':'var(--accent)','DI':'var(--accent3)','RI':'var(--accent3)','UI':'var(--accent3)','SP':'#a78bfa'};
+  tb.innerHTML=entries.map((e,i)=>`
+    <tr>
+      <td style="color:var(--dim)">${i+1}</td>
+      <td style="color:#fff">${e.name}</td>
+      <td style="color:var(--accent2)">[${e.prog}]</td>
+      <td style="color:${assignColor[e.type]||'var(--text)'}">${e.type}[${e.num}]</td>
+    </tr>`).join('');
+}
+
+// Quiz
+const Qs=[
+  {
+    q:'Which Macro Assignments will execute a Macro in Manual Mode?',
+    opts:['DI, RI, UI, SOP','UK, SU, MF','Macros can only run in AUTOMATIC Mode','FANUC software does not support Macros'],
+    correct:1,
+    explain:'UK (User Key), SU (Shift + User Key), and MF (Manual Functions) are all Manual Mode assignments. They require an operator to physically trigger the macro at the teach pendant.',
+    wrongExplain:'DI, RI, UI, and SOP are all Automatic Mode assignments triggered by signals or panel buttons during production. UK, SU, and MF are the three Manual Mode assignment types.'
+  },
+  {
+    q:'When using a Macro Command Instruction, the program is called by what name?',
+    opts:['Instruction Name','Program Name','Macro Command Instructions do not exist','Comment'],
+    correct:0,
+    explain:'The Macro Command Instruction lists and calls programs by their Instruction Name as entered in the Macro Table — not by the actual program filename. This is the key visual difference from a regular CALL instruction.',
+    wrongExplain:'The program filename appears in the Program column of the Macro Table, but the MACRO instruction references programs by their Instruction Name column entry.'
+  },
+  {
+    q:'In order to assign a Macro to a User Key (UK), the group mask must be set to what?',
+    opts:['Any assignment','[1, *, *, *, *, *, *, *]','[*, *, *, *, *, *, *, *]','[1, 1, 1, 1, 1, 1, 1, 1]'],
+    correct:2,
+    explain:'For a UK (User Key pressed alone) assignment, the program\'s group mask must be set to [*,*,*,*,*,*,*,*]. Additionally, the program cannot contain any motion instructions that move the robot.',
+    wrongExplain:'A group mask starting with "1" would limit the program to motion group 1. The UK assignment requires all wildcards [*,*,*,*,*,*,*,*] because these macros cannot contain motion.'
+  },
+  {
+    q:'What is the difference between UK and SU macro assignments?',
+    opts:['UK runs in Automatic mode; SU runs in Manual mode','UK is pressed alone and cannot contain motion; SU uses SHIFT+key and can contain motion','UK can contain motion; SU cannot','There is no difference — they are interchangeable'],
+    correct:1,
+    explain:'UK (User Key alone) macros cannot contain any motion instructions and require group mask [*,*,*,*,*]. SU (SHIFT + User Key) macros are used for programs that DO contain robot motion instructions.',
+    wrongExplain:'Both UK and SU are Manual Mode assignments. The critical distinction is that only SU macros (requiring the SHIFT key) are allowed to contain motion instructions.'
+  },
+  {
+    q:'How many macro commands can be assigned as input signals by default?',
+    opts:['5','10','24','150'],
+    correct:1,
+    explain:'By default, up to 10 macro commands can be assigned as input signals (DI, RI, or UI). This number can be changed by modifying the $MACROMAXDRI system variable.',
+    wrongExplain:'24 is the maximum number of robot input signals in some configurations, not the default macro input limit. 150 is the total Macro Table size. The default input macro limit is 10.'
+  },
+  {
+    q:'What must you do before assigning a program to the Macro Table?',
+    opts:['Set the program subtype to Macro in the program detail screen','Configure the rack and slot settings','Power cycle the controller','Nothing — any program can be assigned directly without any setup'],
+    correct:0,
+    explain:'The program must first be created and its subtype set to Macro (via DETAIL → Sub type → MACRO). Without this, the program won\'t appear in the Macro filter list, though it can still be assigned from the full program list.',
+    wrongExplain:'Rack/slot settings are for I/O configuration, not macros. Power cycling is not required for macro table changes. While any program can technically be placed in the table, setting the Macro subtype is the proper procedure.'
+  },
+  {
+    q:'Where does the Instruction Name of a Macro appear in the controller interface?',
+    opts:['Only in the program editor','On the MANUAL FCTNS table and in the MACRO Call instruction list','Only in the Macro Table setup screen','In the alarm log'],
+    correct:1,
+    explain:'The Instruction Name appears in two places: on the MANUAL FCTNS macros screen (where operators can see and run it) and in the MACRO Call instruction list when adding a macro call to a program.',
+    wrongExplain:'The Instruction Name is a user-facing label that shows up wherever operators interact with macros — on the Manual Functions screen and when inserting MACRO instructions in programs.'
+  }
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{
+    el.classList.add('locked');
+    if(idx===q.correct)el.classList.add('correct');
+    else if(idx===i&&idx!==q.correct)el.classList.add('wrong');
+  });
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent2);text-shadow:var(--glow2);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 16: Macros.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

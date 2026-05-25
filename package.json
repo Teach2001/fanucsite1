@@ -1,0 +1,13 @@
+{
+  "name": "fanucsite1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev . --bindings PASSWORD_SECRET=your_secret_here",
+    "start": "npm run dev",
+    "build": "echo \"No build step required for this static site.\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.94.0"
+  }
+}

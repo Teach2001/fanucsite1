@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Edit Command — Chapter 13</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent2),var(--accent));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent2);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent2);text-shadow:var(--glow2)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent2);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow2),0 0 60px rgba(255,107,0,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent2)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(255,107,0,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(0,212,255,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent2);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent2),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent2),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent2);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent2);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow2);animation:pg 2s ease infinite}
+  .sdot.b{background:var(--accent);box-shadow:var(--glow)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}.sdot.p{background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  .info-box{background:rgba(255,107,0,.05);border:1px solid rgba(255,107,0,.25);border-left:3px solid var(--accent2);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+  .it{font-size:.85rem;color:#ffc080;line-height:1.7}.it strong{color:#ffe0c0}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  /* Terminal */
+  .terminal{background:#030a0f;border:1px solid var(--accent2);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .terminal.blue{border-color:var(--accent)}
+  .t-header{color:var(--accent2);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(255,107,0,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-header.blue{color:var(--accent);border-bottom-color:rgba(0,212,255,.2)}
+  .t-cursor{animation:blink .8s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .t-line{line-height:2}
+  .t-line .num{color:var(--dim);min-width:1.6rem;display:inline-block}
+  .t-line .kw{color:var(--accent2)}
+  .t-line .pos{color:var(--accent)}
+  .t-line .sp{color:var(--accent3)}
+  .t-line .term{color:#a78bfa}
+  .t-line .rem{color:#facc15;font-style:italic}
+  .t-line .dim{color:var(--dim)}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent2),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent2);flex-shrink:0;box-shadow:var(--glow2);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+  .step-body .sub-step{margin-top:.5rem;padding:.5rem .8rem;background:rgba(0,212,255,.04);border-left:2px solid rgba(0,212,255,.2);font-size:.8rem;color:var(--dim);line-height:1.6}
+  .step-body .sub-step span{color:var(--accent2)}
+
+  /* EDCMD menu table */
+  .cmd-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:1rem}
+  .cmd-table th{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:.18em;color:var(--accent2);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+  .cmd-table td{padding:.75rem 1rem;border-bottom:1px solid rgba(26,58,92,.4);color:var(--text);vertical-align:top;transition:background .2s}
+  .cmd-table tr:hover td{background:rgba(255,107,0,.04)}
+  .cmd-table td:first-child{color:var(--accent2);font-family:'Share Tech Mono',monospace;white-space:nowrap;font-weight:700}
+  .cmd-table td:nth-child(2){color:var(--dim);font-size:.82rem}
+
+  /* Paste method cards */
+  .paste-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+  .paste-card{border-radius:4px;padding:1.4rem;transition:transform .3s}
+  .paste-card:hover{transform:translateY(-3px)}
+  .paste-card.logic{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .paste-card.posid{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .paste-card.position{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .paste-card.cancel{background:rgba(100,100,100,.06);border:1px solid rgba(100,100,100,.35)}
+  .paste-card.rlogic{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.35)}
+  .paste-card.rposid{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.25)}
+  .paste-card.rpos{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.25)}
+  .paste-card.rmposid,.paste-card.rmpos{background:rgba(250,204,21,.04);border:1px solid rgba(250,204,21,.25)}
+  .pc-key{font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:900;margin-bottom:.2rem}
+  .paste-card.logic .pc-key{color:var(--accent2)}
+  .paste-card.posid .pc-key,.paste-card.rposid .pc-key{color:var(--accent)}
+  .paste-card.position .pc-key,.paste-card.rpos .pc-key{color:var(--accent3)}
+  .paste-card.cancel .pc-key{color:var(--dim)}
+  .paste-card.rlogic .pc-key{color:#a78bfa}
+  .paste-card.rmposid .pc-key,.paste-card.rmpos .pc-key{color:#facc15}
+  .pc-shortcut{font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:.1rem .35rem;border-radius:2px;display:inline-block;margin-bottom:.5rem;border:1px solid currentColor;opacity:.7}
+  .pc-title{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(200,220,230,.8)}
+  .pc-body{font-size:.78rem;color:var(--dim);line-height:1.7;margin-bottom:.6rem}
+  .pc-example{font-family:'Share Tech Mono',monospace;font-size:.72rem;background:#030a0f;border-radius:3px;padding:.5rem .7rem;border:1px solid rgba(26,58,92,.6);line-height:1.9}
+
+  /* Interactive program simulator */
+  .prog-builder{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:1rem}
+  .prog-header{background:rgba(255,107,0,.08);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .prog-name-display{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--accent2);letter-spacing:.15em}
+  .prog-body{padding:1rem 1.2rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;min-height:140px}
+  .pl{line-height:2.1;display:flex;gap:.6rem;align-items:center;border-radius:2px;padding:0 .3rem;transition:background .2s}
+  .pl.selected{background:rgba(255,107,0,.14)}
+  .pl.remarked{opacity:.5}
+  .pl-num{color:var(--dim);min-width:1.6rem;text-align:right;flex-shrink:0}
+  .pl-kw{color:var(--accent2)}
+  .pl-motion{color:var(--accent)}
+  .pl-pos{color:#a78bfa}
+  .pl-speed{color:var(--accent3)}
+  .pl-term{color:var(--accent2)}
+  .pl-end{color:var(--dim)}
+  .pl-remark{color:#facc15}
+  .pl-blank{color:transparent;user-select:none}
+  .prog-footer{border-top:1px solid var(--border);padding:.5rem 1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+  .sk{font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:.25rem .6rem;border-radius:2px;border:1px solid var(--border);color:var(--dim);background:#030a0f;cursor:pointer;transition:all .2s;user-select:none}
+  .sk:hover,.sk.active{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.08)}
+  .sk.danger:hover{border-color:#ff3232;color:#ff8888;background:rgba(255,50,50,.08)}
+  .sk.green:hover,.sk.green.active{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.06)}
+
+  /* Undo limitations */
+  .limit-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:1rem}
+  @media(max-width:600px){.limit-grid{grid-template-columns:1fr}}
+  .limit-card{background:rgba(255,50,50,.05);border:1px solid rgba(255,50,50,.2);border-radius:4px;padding:1.2rem}
+  .limit-title{font-family:'Orbitron',sans-serif;font-size:.75rem;color:#ff8888;letter-spacing:.1em;margin-bottom:.8rem}
+  .limit-list{list-style:none;display:flex;flex-direction:column;gap:.4rem}
+  .limit-list li{font-size:.8rem;color:var(--dim);padding-left:.9rem;position:relative;line-height:1.6}
+  .limit-list li::before{content:'×';position:absolute;left:0;color:#ff3232;font-weight:700}
+
+  /* Lab card */
+  .lab-card{background:var(--panel);border:1px solid rgba(0,255,136,.3);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+  .lab-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent3),transparent)}
+  .lab-num{font-family:'Orbitron',sans-serif;font-size:.72rem;color:var(--accent3);letter-spacing:.2em;margin-bottom:.3rem}
+  .lab-title{font-family:'Orbitron',sans-serif;font-size:1rem;color:#fff;margin-bottom:.8rem}
+  .lab-body{font-size:.85rem;color:var(--dim);line-height:1.8}
+  .lab-steps{margin-top:1rem;display:flex;flex-direction:column;gap:.4rem;padding-left:1.2rem}
+  .lab-steps li{font-size:.82rem;color:var(--dim);line-height:1.7}
+  .lab-steps li strong{color:var(--text)}
+  .lab-sub{margin-top:.3rem;padding-left:1.2rem;display:flex;flex-direction:column;gap:.3rem}
+  .lab-sub li{font-size:.8rem;color:var(--dim);line-height:1.6;list-style:lower-alpha}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem;margin-top:1rem}
+  .quiz-q{font-size:.98rem;color:#fff;font-weight:600;line-height:1.6;margin-bottom:1.5rem}
+  .quiz-opts{display:flex;flex-direction:column;gap:.75rem}
+  .quiz-opt{display:flex;align-items:center;gap:.9rem;padding:.9rem 1.1rem;background:#030a0f;border:1px solid var(--border);border-radius:3px;cursor:pointer;transition:all .2s;font-size:.85rem;color:var(--dim)}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent2);color:#fff;background:rgba(255,107,0,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);color:var(--accent3);background:rgba(0,255,136,.06)}
+  .quiz-opt.wrong{border-color:#ff3232;color:#ff8888;background:rgba(255,50,50,.06)}
+  .quiz-opt.locked{cursor:default}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;width:1.6rem;height:1.6rem;border-radius:50%;border:1px solid currentColor;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .quiz-fb{margin-top:1.2rem;font-size:.85rem;line-height:1.7;border-radius:3px;padding:0;max-height:0;overflow:hidden;transition:all .4s ease;opacity:0}
+  .quiz-fb.show{max-height:200px;padding:.9rem 1.1rem;opacity:1}
+  .quiz-fb.good{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.3);color:var(--accent3)}
+  .quiz-fb.bad{background:rgba(255,50,50,.07);border:1px solid rgba(255,50,50,.3);color:#ff8888}
+  .quiz-nav{margin-top:1.2rem;display:flex;gap:.8rem;justify-content:flex-end}
+  .qbtn{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.12em;padding:.5rem 1.2rem;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s}
+  .qbtn:hover,.qbtn.pri{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,0,.08)}
+  .qbtn.pri{box-shadow:var(--glow2)}
+
+  @media(max-width:768px){nav .nav-links{display:none}.paste-grid{grid-template-columns:1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+
+<nav>
+  <a class="nav-logo" href="#">FANUC // CH.13</a>
+  <ul class="nav-links">
+    <li><a href="#menu">EDCMD Menu</a></li>
+    <li><a href="#insert">Insert</a></li>
+    <li><a href="#delete">Delete</a></li>
+    <li><a href="#copypaste">Copy/Paste</a></li>
+    <li><a href="#other">Replace &amp; More</a></li>
+    <li><a href="#labs">Labs</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-label">HandlingTool — Chapter 13</div>
+  <h1>Edit<br><span>Command</span></h1>
+  <p class="hero-sub">Insert · Delete · Copy · Replace · Remark · Undo</p>
+
+  <div class="hero-cw">
+    <div class="hero-ring ring1"></div>
+    <div class="hero-ring ring2"></div>
+    <div style="position:relative;z-index:2;background:#030a0f;border:1px solid var(--border);border-radius:4px;padding:1.2rem 1.6rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;min-width:260px;text-align:left">
+      <div style="color:var(--dim);font-size:.6rem;letter-spacing:.2em;margin-bottom:.7rem">EDIT COMMAND MENU — F5 [EDCMD]</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem">
+        <div style="color:var(--accent2)">INSERT</div><div style="color:var(--dim)">Add blank lines</div>
+        <div style="color:var(--accent2)">DELETE</div><div style="color:var(--dim)">Remove lines</div>
+        <div style="color:var(--accent2)">COPY/CUT</div><div style="color:var(--dim)">Copy a range</div>
+        <div style="color:var(--accent2)">REPLACE</div><div style="color:var(--dim)">Find &amp; replace</div>
+        <div style="color:var(--accent2)">RENUMBER</div><div style="color:var(--dim)">Resequence IDs</div>
+        <div style="color:var(--accent2)">REMARK</div><div style="color:var(--dim)">Disable lines</div>
+        <div style="color:var(--accent2)">UNDO</div><div style="color:var(--dim)">Revert last edit</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO EXPLORE</div>
+</section>
+
+<!-- EDCMD MENU -->
+<section class="section" id="menu">
+  <div class="sec-label">13.2 — Edit Command Menu</div>
+  <h2 class="sec-title reveal">Edit Command Overview</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2.5rem">The Edit Command Menu gives the programmer access to items that change motion and non-motion instructions. It is located on the <strong style="color:#fff">second page</strong> of soft keys in the EDIT screen under <strong style="color:var(--accent2)">F5 [EDCMD]</strong>. It can be accessed via the Icon Editor or the fly-out text menu — both offer the same options.</p>
+
+  <div class="reveal">
+    <table class="cmd-table">
+      <thead><tr><th>COMMAND</th><th>DESCRIPTION</th></tr></thead>
+      <tbody>
+        <tr><td>INSERT</td><td>Adds blank lines to the program. Required when adding positions or instructions — otherwise the new instruction will overwrite the existing line.</td></tr>
+        <tr><td>DELETE</td><td>Removes one line or a range of lines from a program.</td></tr>
+        <tr><td>COPY/CUT</td><td>Copies or cuts a range of lines and pastes them in the same or another program.</td></tr>
+        <tr><td>FIND</td><td>Searches for a specific instance of an instruction within the program.</td></tr>
+        <tr><td>REPLACE</td><td>Searches for and replaces instructions or variable items throughout the program.</td></tr>
+        <tr><td>RENUMBER</td><td>Renumbers position IDs (not PR's) sequentially from start to finish.</td></tr>
+        <tr><td>COMMENT</td><td>Hides or displays comments from I/O and register tables on the EDIT screen.</td></tr>
+        <tr><td>UNDO</td><td>Reverts the most recent edit operation only.</td></tr>
+        <tr><td>REMARK</td><td>Masks out (disables) instructions by commenting them out with "//".</td></tr>
+        <tr><td>COLOR</td><td>Highlights remarked lines with a yellow background; I/O with Red (OFF) or Green (ON).</td></tr>
+        <tr><td>I/O STATUS</td><td>Displays or masks the current status of I/O utilized in a program.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note-box reveal" style="margin-top:1.5rem">
+    <div class="bi">📌</div>
+    <div class="nt"><strong>Two access methods:</strong> Press F5 [EDCMD] to open the Icon Editor with graphical buttons, or press F4 EXIT ICON to switch to the text fly-out menu. Both R30iB PLUS and R30iB software support the Icon Editor.</div>
+  </div>
+</section>
+
+<!-- INSERT -->
+<section class="section" id="insert">
+  <div class="sec-label">13.3 — Inserting Blank Lines</div>
+  <h2 class="sec-title reveal">Inserting Blank Lines</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Inserting blank lines serves two purposes: it improves readability by breaking up code visually, and it creates space to add new instructions. <strong style="color:#fff">Blank lines have zero effect on cycle time</strong> — they are not executed by the processor. Lines are always inserted <em>above</em> the cursor position.</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 13-1: Insert Blank Lines</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor below the insertion point</strong><p>Lines insert <em>above</em> the cursor, so position it on the line below where you want new space.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F5 [EDCMD]</strong><p>If F5 does not show [EDCMD], press NEXT to toggle soft key pages first.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Select INSERT</strong><p>The Edit Command menu opens. Choose the Insert option.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Enter the number of lines &amp; press ENTER</strong><p>Type how many blank lines to add. To insert just one line, press ENTER without typing a number.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Interactive Demo</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <span class="prog-name-display">FANUC_ACADEMY</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)" id="insertLineCount">9 LINES</span>
+        </div>
+        <div class="prog-body" id="insertProg">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span>=<span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span>=<span class="pl-speed">1</span></div>
+          <div class="pl" id="ins-target"><span class="pl-num">3</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1:Square]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">5</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">6</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[3]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">7</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[1:Square]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">8</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+        <div class="prog-footer">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">TRY IT:</span>
+          <button class="sk" onclick="insertDemo()">INSERT 2 LINES ABOVE LINE 3</button>
+          <button class="sk danger" onclick="resetInsert()">RESET</button>
+        </div>
+      </div>
+      <div class="info-box">
+        <div class="bi">💡</div>
+        <div class="it">On FANUC robots, adding an instruction <strong>without inserting first will overwrite</strong> the existing line. Always insert space before adding new code.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DELETE -->
+<section class="section" id="delete">
+  <div class="sec-label">13.4 — Deleting Lines</div>
+  <h2 class="sec-title reveal">Deleting Lines</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">You can delete a single line or a contiguous range of lines from a program. Deleted lines are permanently removed — use Undo immediately if this was unintentional.</p>
+
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">Procedure 13-2: Delete Line(s)</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor on the line (or first line of range) to delete</strong><p>Navigate to the first line you want removed.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F5 [EDCMD] → SELECT DELETE</strong><p>If F5 doesn't show [EDCMD], press NEXT first.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Single line: press F4 YES</strong><p>Immediately confirms deletion of the highlighted line.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Range: move cursor to extend selection, then F4 YES</strong><p>Scroll up or down — each line in the range highlights. Press F4 YES when the full range is selected.</p></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">Interactive Demo</div>
+      <div class="prog-builder">
+        <div class="prog-header">
+          <span class="prog-name-display">FANUC_ACADEMY</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)" id="delLineCount">8 LINES</span>
+        </div>
+        <div class="prog-body" id="delProg">
+          <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span>=<span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span>=<span class="pl-speed">1</span></div>
+          <div class="pl"><span class="pl-num">3</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl" id="del-t1"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1:Square]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl" id="del-t2"><span class="pl-num">5</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl" id="del-t3"><span class="pl-num">6</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[3]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+          <div class="pl"><span class="pl-num">7</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+          <div class="pl"><span class="pl-end">[End]</span></div>
+        </div>
+        <div class="prog-footer">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim)">TRY IT:</span>
+          <button class="sk danger" onclick="deleteDemo()">DELETE LINES 4–6</button>
+          <button class="sk" onclick="resetDelete()">RESET</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COPY & PASTE -->
+<section class="section" id="copypaste">
+  <div class="sec-label">13.5 — Copy &amp; Paste</div>
+  <h2 class="sec-title reveal">Copy and Paste</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Copy/paste selects a group of instructions, makes a copy, and inserts them at one or more locations in the same or a different program. Like INSERT, pasting always occurs <em>above</em> the cursor position.</p>
+
+  <div class="reveal">
+    <div class="sub-title" style="margin-top:0">Procedure 13-3: Copy and Paste</div>
+    <div class="two-col" style="margin-bottom:2rem">
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor on the first line to copy</strong><p>Navigate to the starting line of the range you want to copy.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press F5 [EDCMD] → COPY/CUT</strong><p>Press NEXT first if [EDCMD] is not visible on F5.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Press F2 SELECT, then extend the range</strong><p>Move cursor up or down to highlight the full range of lines to copy.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Press F2 COPY or F3 CUT</strong><p>COPY retains the original lines. CUT removes them from the source location.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Navigate to destination &amp; press F5 PASTE</strong><p>Move to the line below where you want to insert, then press F5 PASTE and choose a paste method.</p></div></div>
+      </div>
+      <div>
+        <div class="sub-title" style="margin-top:0">Source Lines (Example)</div>
+        <div class="terminal" style="border-color:var(--border)">
+          <div class="t-header" style="color:var(--dim)">COPIED PROGRAM INSTRUCTIONS</div>
+          <div class="t-line"><span class="num">1:</span> <span class="pos">J P[1]</span> <span class="sp">100%</span> <span class="term">CNT100</span></div>
+          <div class="t-line"><span class="num">2:</span> <span class="pos">L P[2]</span> <span class="sp">500mm/sec</span> <span class="term">CNT80</span></div>
+          <div class="t-line"><span class="num">3:</span> <span class="kw">DO[1]</span> = <span class="sp">ON</span></div>
+          <div class="t-line"><span class="num">4:</span> <span class="pos">J P[3]</span> <span class="sp">50%</span> <span class="term">CNT50</span></div>
+          <div class="t-line"><span class="num">5:</span> <span class="pos">L P[4]</span> <span class="sp">10mm/sec</span> <span class="term">FINE</span></div>
+          <div class="t-line"><span class="num">6:</span> <span class="kw">CALL HOME</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paste methods - forward -->
+  <div class="reveal">
+    <div class="sub-title" style="margin-top:0">Forward Paste Methods (13.5.1)</div>
+    <div class="paste-grid">
+      <div class="paste-card logic">
+        <div class="pc-key">LOGIC</div>
+        <div class="pc-shortcut">F2</div>
+        <div class="pc-title">Logic Only — Positions Blank</div>
+        <div class="pc-body">Pastes instructions in original order. Position numbers are left <em>blank</em> — positions must be retaught.</div>
+        <div class="pc-example">
+          <div style="color:var(--accent)">7: J P[<span style="color:#ff3232">...</span>] <span style="color:var(--accent3)">100%</span> <span style="color:#a78bfa">CNT100</span></div>
+          <div style="color:var(--accent)">8: L P[<span style="color:#ff3232">...</span>] <span style="color:var(--accent3)">500mm/sec</span> <span style="color:#a78bfa">CNT80</span></div>
+        </div>
+      </div>
+      <div class="paste-card posid">
+        <div class="pc-key">POS_ID</div>
+        <div class="pc-shortcut">F3</div>
+        <div class="pc-title">Original Position Numbers Retained</div>
+        <div class="pc-body">Pastes in original order, keeping the same position numbers. Points to the same recorded data.</div>
+        <div class="pc-example">
+          <div style="color:var(--accent)">7: J P[<span style="color:var(--accent)">1</span>] <span style="color:var(--accent3)">100%</span> <span style="color:#a78bfa">CNT100</span></div>
+          <div style="color:var(--accent)">8: L P[<span style="color:var(--accent)">2</span>] <span style="color:var(--accent3)">500mm/sec</span> <span style="color:#a78bfa">CNT80</span></div>
+        </div>
+      </div>
+      <div class="paste-card position">
+        <div class="pc-key">POSITION</div>
+        <div class="pc-shortcut">F4</div>
+        <div class="pc-title">Renumbered with Next Available IDs</div>
+        <div class="pc-body">Pastes in original order. Positions are renumbered using the next available IDs and the positional data is copied.</div>
+        <div class="pc-example">
+          <div style="color:var(--accent)">7: J P[<span style="color:var(--accent3)">5</span>] <span style="color:var(--accent3)">100%</span> <span style="color:#a78bfa">CNT100</span></div>
+          <div style="color:var(--accent)">8: L P[<span style="color:var(--accent3)">6</span>] <span style="color:var(--accent3)">500mm/sec</span> <span style="color:#a78bfa">CNT80</span></div>
+        </div>
+      </div>
+      <div class="paste-card cancel">
+        <div class="pc-key">CANCEL</div>
+        <div class="pc-shortcut">F5</div>
+        <div class="pc-title">Cancel — Retain Clipboard</div>
+        <div class="pc-body">Cancels the current paste operation but keeps the copied lines in the clipboard so you can paste elsewhere.</div>
+        <div class="pc-example" style="color:var(--dim)">Clipboard retained → navigate → paste again</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reverse paste methods -->
+  <div class="reveal">
+    <div class="sub-title">Reverse Paste Methods (13.5.2)</div>
+    <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1.5rem">Reverse pasting flips the instruction order. Standard reversal simply inverts the sequence and will produce a <em>different path</em>. <strong style="color:#fff">Reverse Motion</strong> pasting (RM-POSID / RM-POS) intelligently redistributes motion instructions so the robot retraces its path safely — useful for approach/retract moves where the outbound path must mirror the inbound path.</p>
+    <div class="paste-grid">
+      <div class="paste-card rlogic">
+        <div class="pc-key">R-LOGIC</div>
+        <div class="pc-shortcut">NEXT+F1</div>
+        <div class="pc-title">Reversed — Positions Blank</div>
+        <div class="pc-body">Instructions pasted in reverse order. Position numbers left blank — positions must be retaught.</div>
+        <div class="pc-example">
+          <div style="color:#a78bfa">7: CALL HOME</div>
+          <div style="color:var(--accent)">8: L P[<span style="color:#ff3232">...</span>] <span style="color:var(--accent3)">10mm/sec</span> <span style="color:#a78bfa">FINE</span></div>
+        </div>
+      </div>
+      <div class="paste-card rposid">
+        <div class="pc-key">R-POSID</div>
+        <div class="pc-shortcut">NEXT+F2</div>
+        <div class="pc-title">Reversed — Original IDs</div>
+        <div class="pc-body">Instructions pasted in reverse order, retaining the original position numbers.</div>
+        <div class="pc-example">
+          <div style="color:#a78bfa">7: CALL HOME</div>
+          <div style="color:var(--accent)">8: L P[<span style="color:var(--accent)">4</span>] <span style="color:var(--accent3)">10mm/sec</span> <span style="color:#a78bfa">FINE</span></div>
+        </div>
+      </div>
+      <div class="paste-card rpos">
+        <div class="pc-key">R-POS</div>
+        <div class="pc-shortcut">NEXT+F4</div>
+        <div class="pc-title">Reversed — Renumbered IDs</div>
+        <div class="pc-body">Instructions pasted in reverse order, positions renumbered with next available IDs and data copied.</div>
+        <div class="pc-example">
+          <div style="color:#a78bfa">7: CALL HOME</div>
+          <div style="color:var(--accent)">8: L P[<span style="color:var(--accent3)">8</span>] <span style="color:var(--accent3)">10mm/sec</span> <span style="color:#a78bfa">FINE</span></div>
+        </div>
+      </div>
+      <div class="paste-card rmposid">
+        <div class="pc-key">RM-POSID</div>
+        <div class="pc-shortcut">NEXT+F3</div>
+        <div class="pc-title">Reverse Motion — Original IDs</div>
+        <div class="pc-body">Redistributes motion instructions to maintain the path in reverse. Motion type &amp; speed from the 2nd instruction; position data &amp; termination from the 1st. Retains original IDs. <strong style="color:#facc15">Recommended for safe retract paths.</strong></div>
+        <div class="pc-example" style="color:var(--dim)">Path geometry preserved on the return move</div>
+      </div>
+      <div class="paste-card rmpos">
+        <div class="pc-key">RM-POS</div>
+        <div class="pc-shortcut">NEXT+F5</div>
+        <div class="pc-title">Reverse Motion — Renumbered IDs</div>
+        <div class="pc-body">Same as RM-POSID but renumbers the copied positions with next available IDs. Path is preserved on the return move.</div>
+        <div class="pc-example" style="color:var(--dim)">Path geometry preserved + new position IDs</div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="bi">💡</div>
+      <div class="it"><strong>Reverse Motion Pasting vs Plain Reverse:</strong> If you simply paste in reverse (R-LOGIC / R-POSID / R-POS) you flip the instructions upside down — a completely different path results. RM-POSID and RM-POS restructure the motion instructions so the tool follows the same geometry back out.</div>
+    </div>
+  </div>
+</section>
+
+<!-- REPLACE / RENUMBER / COMMENT / UNDO / REMARK -->
+<section class="section" id="other">
+  <div class="sec-label">13.6–13.11 — Remaining Commands</div>
+  <h2 class="sec-title reveal">Replace, Renumber, Undo &amp; More</h2>
+
+  <!-- Replace -->
+  <div class="two-col reveal">
+    <div>
+      <div class="sub-title" style="margin-top:0">13.6 — Replace (Procedure 13-4)</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Replace finds specific instructions and substitutes them with new ones. Searches forward from the current cursor position to [END]. Useful when setup changes affect an entire program.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>F5 [EDCMD] → REPLACE</strong><p>Place cursor anywhere in the program first.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Choose the instruction category to replace</strong><p>Options: Registers, Motion Modify, I/O, JMP/LBL, CALL, TIME BEFORE/AFTER.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Enter the search value, then the replacement</strong><p>The system highlights each match as it finds it.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Choose how to replace each match</strong>
+          <div class="sub-step"><span>F2 ALL</span> — Replace all instances at once</div>
+          <div class="sub-step"><span>F3 YES</span> — Replace this instance, find next</div>
+          <div class="sub-step"><span>F4 NEXT</span> — Skip this instance, find next</div>
+          <div class="sub-step"><span>F5 EXIT</span> — Cancel the replace operation</div>
+        </div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">13.7 — Renumber (Procedure 13-5)</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">When positions are added or deleted, IDs can become non-sequential. Renumber reassigns all position IDs in the program to sequential order.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>F5 [EDCMD] → RENUMBER</strong><p>Cursor can be on any line.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>F4 YES to confirm, F5 NO to cancel</strong><p>After renumbering, like position IDs will share the same ID.</p></div></div>
+      </div>
+      <div class="terminal blue" style="margin-top:1rem">
+        <div class="t-header blue">BEFORE → AFTER RENUMBER</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;font-size:.75rem">
+          <div>
+            <div style="color:var(--dim);margin-bottom:.3rem;font-size:.62rem">BEFORE</div>
+            <div class="t-line"><span class="num">5:</span><span class="pos">J P[8:Sq]</span> <span class="sp">100%</span></div>
+            <div class="t-line"><span class="num">6:</span><span class="pos">L P[4]</span> <span class="sp">750mm/s</span></div>
+            <div class="t-line"><span class="num">7:</span><span class="pos">L P[7]</span> <span class="sp">750mm/s</span></div>
+            <div class="t-line"><span class="num">8:</span><span class="pos">L P[4]</span> <span class="sp">750mm/s</span></div>
+          </div>
+          <div>
+            <div style="color:var(--accent3);margin-bottom:.3rem;font-size:.62rem">AFTER</div>
+            <div class="t-line"><span class="num">5:</span><span style="color:var(--accent3)">J P[1:Sq]</span> <span class="sp">100%</span></div>
+            <div class="t-line"><span class="num">6:</span><span style="color:var(--accent3)">L P[2]</span> <span class="sp">750mm/s</span></div>
+            <div class="t-line"><span class="num">7:</span><span style="color:var(--accent3)">L P[3]</span> <span class="sp">750mm/s</span></div>
+            <div class="t-line"><span class="num">8:</span><span style="color:var(--accent3)">L P[2]</span> <span class="sp">750mm/s</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:1rem">
+        <div class="bi">📌</div>
+        <div class="nt">Renumbering has <strong>no effect on Position Register IDs</strong> (PR[x]). Only local P[n] IDs are renumbered.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comment + Undo -->
+  <div class="two-col reveal" style="margin-top:3rem">
+    <div>
+      <div class="sub-title" style="margin-top:0">13.8 — Displaying Comments</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Comments for I/O and registers can be displayed inline on the EDIT screen without opening a separate table. This is a <strong style="color:#fff">global toggle</strong> — it applies to all programs. Press F5 [EDCMD] → COMMENT to enable/disable.</p>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>I/O Instructions</strong><span>DI [i:COMMENT] — shows the comment inline.</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>Register Instructions</strong><span>R [i:COMMENT] — shows the label for that register.</span></div></li>
+        <li class="spec-item"><div class="sdot b"></div><div class="spec-text"><strong>Position Register Instructions</strong><span>PR [i:COMMENT] — shows the PR label inline.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Position P[ ] Comments</strong><span>Stored in the program itself and cannot be disabled by the Comment toggle.</span></div></li>
+      </ul>
+      <div class="terminal" style="margin-top:1rem;border-color:var(--border)">
+        <div class="t-header" style="color:var(--dim)">COMMENT ENABLED vs DISABLED</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 .5rem;font-size:.72rem">
+          <div>
+            <div style="color:var(--accent3);font-size:.6rem;margin-bottom:.3rem">ENABLED</div>
+            <div class="t-line"><span class="num">4:</span><span class="pos">J PR[1:HOME]</span></div>
+          </div>
+          <div>
+            <div style="color:var(--dim);font-size:.6rem;margin-bottom:.3rem">DISABLED</div>
+            <div class="t-line"><span class="num">4:</span><span class="pos">J PR[1]</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">13.9 — Undo (Procedure 13-6)</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Undo reverts the <strong style="color:#fff">most recent edit</strong>. Multiple modifications to the same line — if no other line was edited between them — can be recovered with a single Undo. You can also Redo the last Undo.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>F5 [EDCMD] → UNDO</strong><p>Opens the undo confirmation prompt.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>F4 YES to undo / F5 NO to cancel</strong><p>The recovered state is shown on screen.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>To redo: F5 [EDCMD] → UNDO → F4 YES again</strong><p>This re-applies the operation that was just undone.</p></div></div>
+      </div>
+
+      <div class="sub-title">13.9.1 — Undo Limitations</div>
+      <div class="limit-grid">
+        <div class="limit-card">
+          <div class="limit-title">GENERAL CONDITIONS</div>
+          <ul class="limit-list">
+            <li>Controller power cycled</li>
+            <li>Another program selected</li>
+            <li>Using a keyboard input</li>
+            <li>Teach pendant switch OFF</li>
+            <li>Program is write-protected</li>
+            <li>Insufficient pendant memory</li>
+          </ul>
+        </div>
+        <div class="limit-card">
+          <div class="limit-title">HANDLINGTOOL CONDITIONS</div>
+          <ul class="limit-list">
+            <li>Modifying palletizing commands</li>
+            <li>Deleting palletizing lines</li>
+            <li>Copying palletizing lines</li>
+            <li>Pasting palletizing lines</li>
+            <li>Line tracking instructions</li>
+            <li>On-line touch up executed</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:1rem">
+        <div class="bi">📌</div>
+        <div class="nt">If power fails during an Undo operation, results are unpredictable. The desired modification is not guaranteed to have taken effect when power is restored.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remark + Color -->
+  <div class="two-col reveal" style="margin-top:3rem">
+    <div>
+      <div class="sub-title" style="margin-top:0">13.10 — Remarking Instructions (Procedure 13-7)</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Remarking disables an instruction by prefixing it with <strong style="color:#facc15">//</strong>. The instruction is skipped during program execution but is not deleted. You <strong style="color:#fff">cannot edit</strong> a remarked line until you unremark it.</p>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">You can still perform: delete, copy/paste, find/replace, and renumber on remarked lines.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Place cursor on the line to remark</strong><p>For a range, position on the first line.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>F5 [EDCMD] → REMARK</strong><p>If [EDCMD] not visible, press NEXT.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Extend range by moving cursor, then confirm</strong>
+          <div class="sub-step"><span>F4 REMARK</span> — disables selected line(s)</div>
+          <div class="sub-step"><span>F5 UNREMARK</span> — re-enables selected line(s)</div>
+        </div></div>
+      </div>
+      <div class="terminal" style="margin-top:1rem;border-color:var(--border)">
+        <div class="t-header" style="color:var(--dim)">REMARKED vs UNREMARKED</div>
+        <div class="t-line"><span class="rem">// J PR[1:HOME] 100% FINE</span></div>
+        <div class="t-line"><span class="rem">// J P[1:Square] 100% CNT50</span></div>
+        <div style="border-top:1px solid var(--border);margin:.4rem 0"></div>
+        <div class="t-line"><span class="pos">J PR[1:HOME]</span> <span class="sp">100%</span> <span class="term">FINE</span></div>
+        <div class="t-line"><span class="pos">J P[1:Square]</span> <span class="sp">100%</span> <span class="term">CNT50</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="sub-title" style="margin-top:0">13.11 — Displaying Instructions in Color</div>
+      <p style="color:var(--dim);font-size:.88rem;line-height:1.75;margin-bottom:1rem">Color mode highlights different instruction types to make programs easier to read at a glance. Toggle with F5 [EDCMD] → COLOR.</p>
+      <div class="card-grid" style="grid-template-columns:1fr">
+        <div class="card">
+          <div class="card-icon">🟡</div>
+          <div class="card-title">Remarked Lines</div>
+          <div class="card-body">Displayed as black text on a <strong>yellow background</strong>. Makes disabled code immediately obvious.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔴</div>
+          <div class="card-title">Application Instructions (I/O OFF)</div>
+          <div class="card-body">I/O instructions with OFF status are displayed in <strong>red</strong>.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🟢</div>
+          <div class="card-title">Application Instructions (I/O ON)</div>
+          <div class="card-body">I/O instructions with ON status are displayed in <strong>green</strong>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LAB -->
+<section class="section" id="labs">
+  <div class="sec-label">Lab 22</div>
+  <h2 class="sec-title reveal">Lab 22 — Utilize EDCMD</h2>
+  <div class="reveal">
+    <div class="lab-card">
+      <div class="lab-num">LAB 22</div>
+      <div class="lab-title">Utilize EDCMD</div>
+      <div class="lab-body">Practice all Edit Command operations on real FANUC robot programs: copy, delete, insert, and replace across three shape programs derived from A_SHAPES.</div>
+      <ol class="lab-steps">
+        <li><strong>Copy A_SHAPES and rename it A_SQUARE</strong> — See Section 11.3.1 (pg. 161)
+          <ul class="lab-sub">
+            <li>Delete all lines that are not part of the square — See Section 13.4 (pg. 212)</li>
+            <li>Insert a blank line between the frame instructions and the home position — See Section 13.3 (pg. 210)</li>
+            <li>Using REPLACE, change all Linear speeds from <strong>750mm/sec → 6000cm/min</strong> — See Section 13.6 (pg. 217)</li>
+          </ul>
+        </li>
+        <li><strong>Open A_SHAPES, copy all circle lines, create A_CIRCLE</strong> — See Section 13.5.3 (pg. 216)
+          <ul class="lab-sub">
+            <li>Paste the circle lines into A_CIRCLE</li>
+            <li>Copy frame instructions from A_SHAPES and paste at top of A_CIRCLE</li>
+            <li>Insert a blank line between frame instructions and home position</li>
+            <li>Using REPLACE, change all <strong>CNT termination → FINE termination</strong></li>
+            <li>Copy only the circle-tracing instructions and paste them in <strong>reverse</strong></li>
+          </ul>
+        </li>
+        <li><strong>Open A_SHAPES, copy all triangle lines, create A_TRIANGLE</strong>
+          <ul class="lab-sub">
+            <li>Paste the triangle lines into A_TRIANGLE</li>
+            <li>Copy frame instructions from A_SHAPES and paste at top of A_TRIANGLE</li>
+            <li>Insert a blank line between frame instructions and home position</li>
+            <li>Using REPLACE, change all <strong>CNT75 → CNT50</strong></li>
+            <li>Using REPLACE, change all Linear speeds from <strong>500mm/sec → 1000mm/sec</strong></li>
+          </ul>
+        </li>
+        <li><strong>Test all newly created programs</strong> — Step Test → Continuous Test → Auto</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">13.12 — Chapter Review</div>
+  <h2 class="sec-title reveal">Knowledge Check</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.9rem;margin-bottom:1.5rem">Test your understanding of Chapter 13: Edit Command.</p>
+  <div class="quiz-wrap reveal" id="qC"></div>
+</section>
+
+<div style="height:6rem;position:relative;z-index:10;text-align:center;padding-top:2rem">
+  <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--dim);letter-spacing:.25em">FANUC AMERICA CORPORATION © 2020 — MATAGHAND0318CE — CHAPTER 13</span>
+</div>
+
+<script>
+// Progress bar
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  document.getElementById('pb').style.width=(window.scrollY/h*100)+'%';
+});
+
+// Particles
+for(let i=0;i<18;i++){
+  const p=document.createElement('div');p.className='particle';
+  p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s;--drift:${(Math.random()-.5)*120}px`;
+  document.body.appendChild(p);
+}
+
+// Reveal on scroll
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});
+},{threshold:.1});
+document.querySelectorAll('.reveal,.step').forEach(el=>ro.observe(el));
+
+// ── INSERT DEMO ──
+let insertDone=false;
+function insertDemo(){
+  if(insertDone)return;
+  insertDone=true;
+  const prog=document.getElementById('insertProg');
+  const target=document.getElementById('ins-target'); // line 3 (HOME)
+  // Insert 2 blank lines above line 3
+  for(let i=0;i<2;i++){
+    const blank=document.createElement('div');
+    blank.className='pl';
+    blank.innerHTML='<span class="pl-blank">.</span>';
+    blank.style.borderLeft='2px solid rgba(0,212,255,.3)';
+    blank.style.animation='fadeIn .4s ease forwards';
+    prog.insertBefore(blank,target);
+  }
+  // Renumber display
+  renumberDisplay('insertProg');
+  document.getElementById('insertLineCount').textContent='11 LINES';
+}
+function resetInsert(){
+  insertDone=false;
+  document.getElementById('insertProg').innerHTML=`
+    <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span>=<span class="pl-speed">1</span></div>
+    <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span>=<span class="pl-speed">1</span></div>
+    <div class="pl" id="ins-target"><span class="pl-num">3</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+    <div class="pl"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1:Square]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+    <div class="pl"><span class="pl-num">5</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+    <div class="pl"><span class="pl-num">6</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[3]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+    <div class="pl"><span class="pl-num">7</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[1:Square]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+    <div class="pl"><span class="pl-num">8</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+    <div class="pl"><span class="pl-end">[End]</span></div>`;
+  document.getElementById('insertLineCount').textContent='9 LINES';
+}
+
+// ── DELETE DEMO ──
+let deleteDone=false;
+function deleteDemo(){
+  if(deleteDone)return;deleteDone=true;
+  ['del-t1','del-t2','del-t3'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.style.transition='all 0.4s ease';
+    el.style.transitionDelay=(i*0.1)+'s';
+    el.style.background='rgba(255,50,50,.15)';
+    el.style.borderLeft='2px solid #ff3232';
+    setTimeout(()=>{
+      el.style.opacity='0';el.style.maxHeight='0';el.style.padding='0';el.style.overflow='hidden';
+    },300+i*100);
+  });
+  setTimeout(()=>{renumberDisplay('delProg');document.getElementById('delLineCount').textContent='4 LINES';},800);
+}
+function resetDelete(){
+  deleteDone=false;
+  document.getElementById('delProg').innerHTML=`
+    <div class="pl"><span class="pl-num">1</span><span class="pl-kw">UFRAME_NUM</span>=<span class="pl-speed">1</span></div>
+    <div class="pl"><span class="pl-num">2</span><span class="pl-kw">UTOOL_NUM</span>=<span class="pl-speed">1</span></div>
+    <div class="pl"><span class="pl-num">3</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+    <div class="pl" id="del-t1"><span class="pl-num">4</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">P[1:Square]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">CNT50</span></div>
+    <div class="pl" id="del-t2"><span class="pl-num">5</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[2]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+    <div class="pl" id="del-t3"><span class="pl-num">6</span><span class="pl-motion">L</span>&nbsp;<span class="pl-pos">P[3]</span>&nbsp;<span class="pl-speed">750mm/sec</span>&nbsp;<span class="pl-term">CNT50</span></div>
+    <div class="pl"><span class="pl-num">7</span><span class="pl-motion">J</span>&nbsp;<span class="pl-pos">PR[1:HOME]</span>&nbsp;<span class="pl-speed">100%</span>&nbsp;<span class="pl-term">FINE</span></div>
+    <div class="pl"><span class="pl-end">[End]</span></div>`;
+  document.getElementById('delLineCount').textContent='8 LINES';
+}
+
+function renumberDisplay(id){
+  const prog=document.getElementById(id);
+  const rows=[...prog.querySelectorAll('.pl')];
+  let n=1;
+  rows.forEach(r=>{
+    const numEl=r.querySelector('.pl-num');
+    if(numEl&&!r.querySelector('.pl-end')&&!r.querySelector('.pl-blank,.pl-remark')){
+      numEl.textContent=n++;
+    }
+  });
+}
+
+// ── QUIZ ──
+const Qs=[
+  {
+    q:'Which type of pasting will paste motion instructions in order AND renumber the Position IDs based on the first available Position ID?',
+    opts:['LOGIC (F2)','POSITION (F4)','POS_ID (F3)','R-POS (NEXT+F4)'],
+    correct:1,
+    explain:'POSITION (F4) pastes instructions in their original order and renumbers copied positions with the next available position numbers, retaining the positional data.',
+    wrongExplain:'LOGIC leaves position numbers blank. POS_ID retains the original IDs. R-POS pastes in reverse order. Only POSITION (F4) renumbers with next available IDs while keeping the order forward.'
+  },
+  {
+    q:'Which type of pasting redistributes motion information so that the path is maintained in reverse while retaining the original Position IDs?',
+    opts:['R-POS (NEXT+F4)','R-POSID (NEXT+F2)','RM-POS (NEXT+F5)','RM-POSID (NEXT+F3)'],
+    correct:3,
+    explain:'RM-POSID (NEXT+F3) pastes all instructions except motion instructions in reverse order, then redistributes the motion instructions to maintain the same path on the way back. It retains the original position numbers.',
+    wrongExplain:'R-POSID simply reverses the instruction order (different path). RM-POS does what RM-POSID does but renumbers IDs. Only RM-POSID both maintains the path geometry AND retains original IDs.'
+  },
+  {
+    q:'Which EDCMD feature would allow the programmer to change ALL FINE termination types to CNT termination throughout a program?',
+    opts:['COMMENT','REPLACE','UNDO','FIND'],
+    correct:1,
+    explain:'REPLACE searches forward from the cursor for a specified instruction (FINE termination) and replaces it with a new one (CNT termination). Using F2 ALL replaces every instance at once.',
+    wrongExplain:'COMMENT toggles display of I/O labels. UNDO only reverts the last edit. FIND locates occurrences but does not change them. REPLACE is the correct tool for a global substitution.'
+  },
+  {
+    q:'If a line is remarked, it can be edited?',
+    opts:['True','False'],
+    correct:1,
+    explain:'False. A remarked line (prefixed with //) cannot be edited until it is unremarked. You can still delete, copy/paste, find/replace, and renumber it — but you cannot modify its instruction content.',
+    wrongExplain:'Remarked lines are read-only for editing purposes. You must unremark the line first (F5 [EDCMD] → Remark → F5 UNREMARK) before you can change its content.'
+  },
+  {
+    q:'When inserting blank lines or pasting copied lines, where is the content placed relative to the cursor?',
+    opts:['Below the cursor position','At the end of the program','Above the cursor position','At the beginning of the program'],
+    correct:2,
+    explain:'Both INSERT and PASTE always place content ABOVE the current cursor position. To insert after line 5, you place the cursor on line 6.',
+    wrongExplain:'This is a common mistake. Content is always inserted ABOVE the cursor — not below. Place the cursor on the line that should come after your new content.'
+  },
+  {
+    q:'Which statement about the UNDO command is correct?',
+    opts:['Undo can revert multiple previous edits in sequence','Undo only works after the controller has been power cycled','Undo reverts only the most recent edit operation','Undo permanently removes the ability to redo'],
+    correct:2,
+    explain:'UNDO only reverts the single most recent edit. Multiple modifications to the same line between edits of other lines can be recovered together, but you cannot step back through a full history of changes.',
+    wrongExplain:'Undo has a single-level history — not a full undo stack. And it is NOT available after a power cycle, program change, or several other conditions listed in section 13.9.1.'
+  },
+  {
+    q:'What does the RENUMBER command do to Position Registers (PR[x])?',
+    opts:['It renumbers them along with local positions','It resets their data to zero','It has no effect on Position Register IDs','It converts them to local positions'],
+    correct:2,
+    explain:'RENUMBER only affects local position IDs (P[n]). Position Registers (PR[x]) are global and their IDs are not changed by the Renumber operation.',
+    wrongExplain:'Renumber only touches local P[n] IDs within the program. PR[x] IDs are global controller registers and are completely unaffected.'
+  },
+  {
+    q:'What is the key danger of using plain R-POSID paste instead of RM-POSID when trying to retrace a path?',
+    opts:['It deletes the original lines from the clipboard','The position numbers will all become blank','It simply flips the instruction order, resulting in a completely different path','It cannot paste into a different program'],
+    correct:2,
+    explain:'R-POSID just inverts the instruction sequence — because positions are recorded at the DESTINATION, reversing the order sends the robot to the destinations in reverse but without redistributing the motion logic, producing a different path. RM-POSID redistributes the motion instructions to properly maintain the geometry.',
+    wrongExplain:'The clipboard is retained with R-POSID. Positions keep their IDs. R-POSID can paste into other programs. The real problem is that a simple reversal produces a different path because motion logic is not redistributed.'
+  },
+];
+
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{
+    el.classList.add('locked');
+    if(idx===q.correct)el.classList.add('correct');
+    else if(idx===i&&idx!==q.correct)el.classList.add('wrong');
+  });
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){
+  if(curQ<Qs.length-1){curQ++;renderQ();}
+  else{
+    document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem">
+      <div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent2);text-shadow:var(--glow2);margin-bottom:1rem">✓</div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div>
+      <p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 13: Edit Command.</p>
+      <button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button>
+    </div>`;
+  }
+}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

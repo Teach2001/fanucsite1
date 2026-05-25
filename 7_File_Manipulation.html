@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC File Manipulation — Chapter 7</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent),var(--accent2));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent);text-shadow:var(--glow)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow),0 0 60px rgba(0,212,255,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(0,212,255,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(255,107,0,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem;filter:drop-shadow(0 0 8px rgba(0,212,255,.4))}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow);animation:pg 2s ease infinite}
+  .sdot.o{background:var(--accent2);box-shadow:var(--glow2)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .caut-box{background:rgba(255,140,0,.08);border:1px solid rgba(255,140,0,.4);border-left:3px solid #ff8c00;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:1.5rem 0}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .ct{font-size:.85rem;color:#ffc080;line-height:1.7}.ct strong{color:#ffe0c0}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  .cpanel{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;display:flex;flex-direction:column;align-items:center}
+  .clabel{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.15em;margin-bottom:.75rem;text-align:center;text-transform:uppercase}
+
+  /* Memory comparison cards */
+  .mem-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-bottom:2rem}
+  @media(max-width:700px){.mem-grid{grid-template-columns:1fr}}
+  .mem-card{border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:transform .3s}
+  .mem-card:hover{transform:translateY(-4px)}
+  .mem-card.dram{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .mem-card.sram{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .mem-card.from{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .mem-tag{font-family:'Orbitron',sans-serif;font-size:1.4rem;font-weight:900;margin-bottom:.5rem}
+  .mem-card.dram .mem-tag{color:var(--accent2)}
+  .mem-card.sram .mem-tag{color:var(--accent)}
+  .mem-card.from .mem-tag{color:var(--accent3)}
+  .mem-name{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.1em;color:var(--dim);margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+  .mem-prop{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--dim);margin:.3rem 0}
+  .mem-prop .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .mem-card.dram .dot{background:var(--accent2)}.mem-card.sram .dot{background:var(--accent)}.mem-card.from .dot{background:var(--accent3)}
+  .mem-badge{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:.2rem .5rem;border-radius:2px;margin-top:.8rem;letter-spacing:.08em}
+  .mem-card.dram .mem-badge{background:rgba(255,107,0,.15);color:var(--accent2);border:1px solid rgba(255,107,0,.3)}
+  .mem-card.sram .mem-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+  .mem-card.from .mem-badge{background:rgba(0,255,136,.1);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}
+
+  /* Backup comparison */
+  .backup-compare{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:2rem 0}
+  @media(max-width:700px){.backup-compare{grid-template-columns:1fr}}
+  .bu-card{border-radius:4px;padding:1.8rem}
+  .bu-card.file{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.3)}
+  .bu-card.image{background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.3)}
+  .bu-title{font-family:'Orbitron',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:.4rem}
+  .bu-card.file .bu-title{color:var(--accent)}.bu-card.image .bu-title{color:var(--accent3)}
+  .bu-source{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.1em;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+  .bu-card.file .bu-source{color:rgba(0,212,255,.6)}.bu-card.image .bu-source{color:rgba(0,255,136,.6)}
+  .bu-item{font-size:.82rem;color:var(--dim);padding:.28rem 0;border-bottom:1px solid rgba(26,58,92,.3);line-height:1.5}
+  .bu-item:last-child{border-bottom:none}
+  .bu-badge{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:.62rem;padding:.15rem .5rem;border-radius:2px;margin-top:.8rem}
+  .bu-card.file .bu-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+  .bu-card.image .bu-badge{background:rgba(0,255,136,.1);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}
+
+  /* Device table */
+  .dev-table{width:100%;border-collapse:collapse;font-size:.84rem}
+  .dev-table th{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:.18em;color:var(--accent);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+  .dev-table td{padding:.7rem 1rem;border-bottom:1px solid rgba(26,58,92,.4);color:var(--text);vertical-align:top;transition:background .2s}
+  .dev-table tr:hover td{background:rgba(0,212,255,.04)}.dev-table td:first-child{color:#fff;font-weight:600;font-family:'Share Tech Mono',monospace;font-size:.82rem;white-space:nowrap}
+
+  /* Format table */
+  .fmt-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin:1rem 0}
+  @media(max-width:600px){.fmt-grid{grid-template-columns:1fr}}
+  .fmt-card{padding:1.5rem;border-radius:4px;background:var(--panel);border:1px solid var(--border);transition:border-color .3s}
+  .fmt-card:hover{border-color:var(--accent)}
+  .fmt-title{font-family:'Orbitron',sans-serif;font-size:.82rem;font-weight:700;color:var(--accent);margin-bottom:.75rem}
+  .fmt-item{font-size:.82rem;color:var(--dim);padding:.28rem 0;border-bottom:1px solid rgba(26,58,92,.3);line-height:1.5}
+  .fmt-item:last-child{border-bottom:none}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent);flex-shrink:0;box-shadow:var(--glow);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+
+  /* Terminal / file screen simulation */
+  .terminal{background:#030a0f;border:1px solid var(--accent);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .t-header{color:var(--accent);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(0,212,255,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-path{color:var(--accent2);margin-bottom:.3rem}
+  .t-row{display:flex;gap:1rem}
+  .t-num{color:var(--dim);min-width:2rem;text-align:right}
+  .t-name{color:#fff;min-width:14ch}
+  .t-ext{color:var(--accent3);min-width:4ch}
+  .t-desc{color:var(--dim)}
+  .t-status{color:var(--accent3);margin-top:.6rem;border-top:1px solid rgba(0,212,255,.15);padding-top:.4rem}
+  .t-warn{color:#ff8888}
+  .t-cursor{animation:blink .8s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+  /* Tabs */
+  .tabs{display:flex;gap:.4rem;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .tab-btn{font-family:'Orbitron',sans-serif;font-size:.68rem;padding:.75rem 1.1rem;background:none;border:none;color:var(--dim);cursor:pointer;letter-spacing:.1em;border-bottom:2px solid transparent;transition:all .2s;position:relative;top:1px}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}.tab-btn:hover:not(.active){color:var(--text)}
+  .tab-pane{display:none;padding:2rem;background:var(--panel);border:1px solid var(--border);border-top:none;border-radius:0 0 4px 4px;animation:fi .3s ease}
+  .tab-pane.active{display:block}
+  @keyframes fi{from{opacity:0}to{opacity:1}}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2.5rem}
+  .quiz-q{font-size:1.05rem;color:#fff;margin-bottom:1.4rem;line-height:1.65;font-weight:600}
+  .quiz-opts{display:flex;flex-direction:column;gap:.65rem}
+  .quiz-opt{padding:.88rem 1.2rem;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:.9rem;color:var(--text);transition:all .2s;display:flex;align-items:center;gap:.8rem}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent);color:#fff;background:rgba(0,212,255,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);background:rgba(0,255,136,.1);color:var(--accent3)}
+  .quiz-opt.wrong{border-color:#ff4444;background:rgba(255,68,68,.1);color:#ff8888}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.73rem;width:1.4rem;height:1.4rem;border-radius:2px;background:rgba(0,212,255,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;font-weight:700}
+  .quiz-fb{margin-top:1rem;font-family:'Share Tech Mono',monospace;font-size:.83rem;padding:.8rem 1rem;border-radius:3px;display:none;line-height:1.6}
+  .quiz-fb.show{display:block;animation:fi .3s ease}.quiz-fb.good{background:rgba(0,255,136,.1);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}.quiz-fb.bad{background:rgba(255,68,68,.1);color:#ff8888;border:1px solid rgba(255,68,68,.3)}
+  .quiz-nav{margin-top:1.4rem;display:flex;gap:1rem}
+  .qbtn{background:none;border:1px solid var(--border);color:var(--dim);padding:.6rem 1.2rem;border-radius:3px;cursor:pointer;font-family:'Exo 2',sans-serif;font-size:.85rem;transition:all .2s}
+  .qbtn.pri{background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)}.qbtn:hover{border-color:var(--accent);color:var(--text)}.qbtn.pri:hover{background:rgba(0,212,255,.2)}
+
+  footer{position:relative;z-index:10;padding:3rem 2rem;border-top:1px solid var(--border);text-align:center}
+  .foot-logo{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.3em;margin-bottom:1rem}
+  footer p{font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);letter-spacing:.1em}
+
+  @media(max-width:600px){nav{padding:.8rem 1rem}.nav-links{display:none}.section{padding:3rem 1rem}.mem-grid{grid-template-columns:1fr}.backup-compare{grid-template-columns:1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+<div id="particles"></div>
+
+<nav>
+  <a href="#hero" class="nav-logo">FANUC // CH.07</a>
+  <ul class="nav-links">
+    <li><a href="#memory">Memory</a></li>
+    <li><a href="#backuptypes">Backup Types</a></li>
+    <li><a href="#prepare">Prepare</a></li>
+    <li><a href="#filebackup">File Backup</a></li>
+    <li><a href="#imageback">Image Backup</a></li>
+    <li><a href="#directory">Directory</a></li>
+    <li><a href="#quiz">Review</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool Training Module</div>
+  <h1>File <span>Manipulation</span></h1>
+  <p class="hero-sub">Chapter 7 — Backup, Restore &amp; Memory Management</p>
+  <div class="hero-cw">
+    <canvas id="heroC" width="240" height="220" style="display:block;filter:drop-shadow(0 0 22px rgba(0,212,255,.45))"></canvas>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO BEGIN</div>
+</section>
+
+<!-- MEMORY -->
+<section class="section reveal" id="memory">
+  <div class="sec-label">7.2 — Controller Memory</div>
+  <h2 class="sec-title">Controller Memory Overview</h2>
+  <p style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">The FANUC controller uses three distinct types of memory, each with different characteristics, purposes, and backup requirements. Understanding these differences is essential for proper data protection.</p>
+
+  <div class="mem-grid reveal">
+    <div class="mem-card dram">
+      <div class="mem-tag">DRAM</div>
+      <div class="mem-name">Dynamic Random Access Memory</div>
+      <div class="mem-prop"><div class="dot"></div>NOT battery backed — volatile</div>
+      <div class="mem-prop"><div class="dot"></div>Contents lost when power is removed</div>
+      <div class="mem-prop"><div class="dot"></div>Also called "TEMP" (temporary memory)</div>
+      <div class="mem-prop"><div class="dot"></div>System software executes here during runtime</div>
+      <div class="mem-badge">TEMPORARY / VOLATILE</div>
+    </div>
+    <div class="mem-card sram">
+      <div class="mem-tag">SRAM</div>
+      <div class="mem-name">Static Random Access Memory</div>
+      <div class="mem-prop"><div class="dot"></div>Battery backed — nonvolatile while battery works</div>
+      <div class="mem-prop"><div class="dot"></div>Contents retained when power is removed</div>
+      <div class="mem-prop"><div class="dot"></div>Also called "CMOS" or "PERM" (permanent memory)</div>
+      <div class="mem-prop"><div class="dot"></div>TPP pool: teach pendant programs</div>
+      <div class="mem-prop"><div class="dot"></div>PERM pool: system variables, KAREL variables</div>
+      <div class="mem-prop"><div class="dot"></div>A portion can be used as RAM Disk (RD:)</div>
+      <div class="mem-badge">BATTERY-BACKED / USER DATA</div>
+    </div>
+    <div class="mem-card from">
+      <div class="mem-tag">F-ROM</div>
+      <div class="mem-name">Flash Programmable Read Only Memory</div>
+      <div class="mem-prop"><div class="dot"></div>NOT battery backed but non-volatile</div>
+      <div class="mem-prop"><div class="dot"></div>Contents retained when power is removed</div>
+      <div class="mem-prop"><div class="dot"></div>Used for permanent storage of system software</div>
+      <div class="mem-prop"><div class="dot"></div>File-oriented — allocated to flash file system</div>
+      <div class="mem-prop"><div class="dot"></div>Contains both system and user files</div>
+      <div class="mem-prop"><div class="dot"></div>Available for user storage as FROM device (FR:)</div>
+      <div class="mem-badge">NON-VOLATILE / SYSTEM SOFTWARE</div>
+    </div>
+  </div>
+
+  <div class="caut-box reveal">
+    <div class="bi">⚠️</div>
+    <div class="ct"><strong>CAUTION:</strong> Data in SRAM can be lost if the battery is removed, loses its charge, or if new core software is loaded. SRAM will last only 30 minutes without the battery when power is off. Back up all files regularly to prevent data loss.</div>
+  </div>
+
+  <div class="cpanel reveal" style="margin-top:1.5rem">
+    <div class="clabel">Memory Architecture — Interactive Diagram</div>
+    <canvas id="memC" width="600" height="200" style="display:block;max-width:100%"></canvas>
+  </div>
+</section>
+
+<!-- BACKUP TYPES -->
+<section class="section" id="backuptypes">
+  <div class="sec-label">7.3 — Types of Backups</div>
+  <h2 class="sec-title reveal">Backup Types</h2>
+
+  <div class="backup-compare reveal">
+    <div class="bu-card file">
+      <div class="bu-title">File Backup</div>
+      <div class="bu-source">SOURCE: SRAM ONLY</div>
+      <div class="bu-item">TP Programs</div>
+      <div class="bu-item">Frames (Tool &amp; User)</div>
+      <div class="bu-item">All Register Data</div>
+      <div class="bu-item">Position Registers</div>
+      <div class="bu-item">Menu Settings</div>
+      <div class="bu-item">I/O Configurations</div>
+      <div class="bu-item">Macro Table</div>
+      <div class="bu-item">Variables (System &amp; KAREL)</div>
+      <div class="bu-item">Mastering Data</div>
+      <div class="bu-badge">✓ SELECT INDIVIDUAL FILES TO RESTORE</div>
+    </div>
+    <div class="bu-card image">
+      <div class="bu-title">Image Backup</div>
+      <div class="bu-source">SOURCE: F-ROM + SRAM</div>
+      <div class="bu-item">Everything in File Backup PLUS:</div>
+      <div class="bu-item">Core Software (HandlingTool + OS)</div>
+      <div class="bu-item">Fixes / Enhancements — Auto Updates</div>
+      <div class="bu-item">Optional Software Customization</div>
+      <div class="bu-item">Operating System (FROM)</div>
+      <div class="bu-item">Maintenance Updates</div>
+      <div class="bu-item" style="color:#fff;font-weight:600">An exact copy of all controller memory</div>
+      <div class="bu-badge">⚠ ALL OR NOTHING — CANNOT RESTORE INDIVIDUAL FILES</div>
+    </div>
+  </div>
+
+  <div class="note-box reveal">
+    <div class="bi">ℹ️</div>
+    <div class="nt"><strong>Key Distinction:</strong> A File Backup lets you restore individual items selectively. An Image Backup is all-or-nothing — it overwrites everything including the operating system. Use Image Backup for complete system cloning or disaster recovery.</div>
+  </div>
+</section>
+
+<!-- PREPARE -->
+<section class="section" id="prepare">
+  <div class="sec-label">7.4 — Preparing for Backup</div>
+  <h2 class="sec-title reveal">Preparing to Create a Backup</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:2rem">Before performing any backup, complete the following preparation steps in order. Not all steps are required in every situation.</p>
+
+  <!-- Default Device -->
+  <div class="sub-title reveal">Step 1 — Set the Default Device</div>
+  <div class="two-col reveal">
+    <div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem">You must set the default device before any program or file manipulation, including formatting. The selected device remains active until changed.</p>
+      <div class="note-box" style="margin-top:0"><div class="bi">📋</div><div class="nt"><strong>Procedure 7-1:</strong> MENU → File → File → F5 [UTIL] → Set Device → select device → ENTER</div></div>
+      <table class="dev-table" style="margin-top:1rem">
+        <thead><tr><th>DEVICE</th><th>IDENTIFIER</th><th>DESCRIPTION</th></tr></thead>
+        <tbody>
+          <tr><td>Memory Card</td><td>MC:</td><td>PCMCIA/ATA card (not on Mate Plus)</td></tr>
+          <tr><td>USB Memory Stick</td><td>UD1: / UT1:</td><td>Front panel USB (UD1) or iPendant USB (UT1)</td></tr>
+          <tr><td>Flash File Storage</td><td>FR:</td><td>Built-in flash storage for system files</td></tr>
+          <tr><td>Memory Device</td><td>MD:</td><td>Treats controller program memory as a file device</td></tr>
+          <tr><td>MF Device</td><td>MF:</td><td>Composite — searches RAM Disk (RD:) then FR: for files</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="terminal">
+      <div class="t-header">FILE SCREEN — DEVICE SELECTION</div>
+      <div class="t-path">MD:\*.* &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1/32</div>
+      <div style="color:var(--dim);font-size:.75rem;margin:.3rem 0">UTIL 1</div>
+      <div style="margin:.2rem 0;color:var(--accent)">1 FROM Disk (FR:)</div>
+      <div style="margin:.2rem 0;color:var(--accent)">2 Backup (FRA:)</div>
+      <div style="margin:.2rem 0;color:var(--accent)">3 RAM Disk (RD:)</div>
+      <div style="margin:.2rem 0;color:var(--accent)">4 Mem Device (MD:)</div>
+      <div style="margin:.2rem 0;color:var(--accent)">5 Console (CONS:)</div>
+      <div style="margin:.2rem 0;background:rgba(0,212,255,.2);padding:.1rem .3rem;color:#fff">6 USB Disk (UD1:) ◄ SELECTED</div>
+      <div style="margin:.2rem 0;color:var(--accent)">7 USB on TP (UT1:)</div>
+      <div class="t-status">UD1:\*.* &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 5/32</div>
+    </div>
+  </div>
+
+  <!-- Format -->
+  <div class="sub-title reveal">Step 2 — Format the Device (First Use Only)</div>
+  <div class="warn-box reveal">
+    <div class="bi">⚠️</div>
+    <div class="wt"><strong>WARNING:</strong> Format the device only before its FIRST use. Formatting after first use will erase all data stored on the device. USB memory sticks plugged into the iPendant connector (UT1:) cannot be formatted — use the controller front panel USB or a PC.</div>
+  </div>
+  <div class="fmt-grid reveal">
+    <div class="fmt-card">
+      <div class="fmt-title">Format as FAT if:</div>
+      <div class="fmt-item">Device is less than 2 GB</div>
+      <div class="fmt-item">255 or fewer files in root directory</div>
+      <div class="fmt-item">Larger quantities go in sub-directories</div>
+      <div class="fmt-item">Faster write speed is needed</div>
+    </div>
+    <div class="fmt-card">
+      <div class="fmt-title">Format as FAT32 if:</div>
+      <div class="fmt-item">No limit to files in root directory needed</div>
+      <div class="fmt-item">Device is larger than 2.0 GB</div>
+    </div>
+  </div>
+  <div class="note-box reveal"><div class="bi">📋</div><div class="nt"><strong>Procedure 7-2:</strong> MENU → File → File → F5 [UTIL] → Format (FAT) or Format FAT32 → F4 [YES] → Enter volume label → ENTER</div></div>
+
+  <!-- Subdirectories -->
+  <div class="sub-title reveal">Step 3 — Create Subdirectories (Optional but Recommended)</div>
+  <div class="two-col reveal">
+    <div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1rem">Subdirectories organize your backups. Each backup uses the same file names, so placing them in dated subdirectories prevents conflicts.</p>
+      <div class="note-box" style="margin-top:0"><div class="bi">📋</div><div class="nt"><strong>Procedure 7-3:</strong> MENU → File → File → F5 [UTIL] → Make DIR → enter name → ENTER. You are automatically placed in the new directory. Navigate with arrow keys or highlight "Up one level" to exit.</div></div>
+    </div>
+    <div class="terminal">
+      <div class="t-header">FILE SCREEN — AFTER CREATING DIRECTORY</div>
+      <div class="t-path">UD1:\FANUC_ACADEMY\*.* &nbsp;&nbsp;&nbsp;&nbsp; 1/33</div>
+      <div class="t-row"><div class="t-num">1</div><div class="t-name">..</div><div style="color:var(--accent);min-width:6ch">&lt;DIR&gt;</div><div class="t-desc">(Up one level)</div></div>
+      <div class="t-row"><div class="t-num">2</div><div class="t-name">* *</div><div class="t-ext"></div><div class="t-desc">(all files)</div></div>
+      <div class="t-row"><div class="t-num">3</div><div class="t-name">* KL</div><div class="t-ext"></div><div class="t-desc">(all KAREL source)</div></div>
+      <div class="t-row"><div class="t-num">4</div><div class="t-name">* CF</div><div class="t-ext"></div><div class="t-desc">(all command files)</div></div>
+      <div class="t-row"><div class="t-num">5</div><div class="t-name">* TP</div><div class="t-ext"></div><div class="t-desc">(all TP programs)</div></div>
+      <div class="t-row"><div class="t-num">6</div><div class="t-name">* VR</div><div class="t-ext"></div><div class="t-desc">(all variable files)</div></div>
+      <div class="t-row"><div class="t-num">7</div><div class="t-name">* SV</div><div class="t-ext"></div><div class="t-desc">(all system files)</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FILE BACKUP & RESTORE -->
+<section class="section" id="filebackup">
+  <div class="sec-label">7.5–7.6 — File Backup &amp; Restore</div>
+  <h2 class="sec-title reveal">File Backup &amp; Restore</h2>
+
+  <div class="tabs reveal">
+    <button class="tab-btn active" onclick="showTab('fbu',this)">FILE BACKUP</button>
+    <button class="tab-btn" onclick="showTab('fre',this)">FILE RESTORE</button>
+  </div>
+
+  <div class="tab-pane active" id="tab-fbu">
+    <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">A File Backup saves program, system, application, diagnostic, and error log files from SRAM to the default device. <strong style="color:#fff">Application software (HandlingTool, etc.) is NOT backed up</strong> using the FILE menu — use Image Backup for that.</p>
+    <div class="steps" id="fbuSteps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Press MENU → File → File</strong><p>Navigate to the File screen via the main menu.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Set the Default Device</strong><p>Verify the correct storage device is selected (see Section 7.4.1).</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Format if Necessary</strong><p>Format the device only if it is being used for the first time (see Section 7.4.2).</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Create Subdirectory if Needed</strong><p>Navigate to or create the target subdirectory to organize backup files (see Section 7.4.3).</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Press F4 [BACKUP]</strong><p>The BACKUP menu opens with file type options.</p></div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Select "8 All of Above"</strong><p>Highlight "All of Above" and press ENTER, or press 8 on the keypad to back up all file categories.</p></div></div>
+      <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Press F4 [YES] to Delete and Backup</strong><p>This deletes the existing directory contents first — necessary because each backup uses identical file names and duplicates cannot exist in the same directory.</p></div></div>
+      <div class="step"><div class="step-num">8</div><div class="step-body"><strong>Wait for Completion</strong><p>A scrolling list shows files being saved. When complete, the total number of files saved is displayed (e.g., "Total 191 files saved").</p></div></div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="tab-fre">
+    <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:.8rem">A File Restore overwrites existing SRAM data on the controller. Not every file is always restored — write-protected System Macros and KCL files will not be overwritten (this is normal).</p>
+    <div class="note-box" style="margin-bottom:1.5rem"><div class="bi">ℹ️</div><div class="nt"><strong>Controlled Start Required:</strong> A File Restore must be performed in Controlled Start mode. This prevents the system from running programs while files are being loaded.</div></div>
+    <div class="steps" id="freSteps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Enter Controlled Start Mode</strong><p><em>If controller is OFF:</em> Hold PREV + NEXT keys and turn on the controller — select "Controlled Start" from the Configuration Menu.<br><em>If controller is ON:</em> Press FCTN → Next → Cycle Power → CTRL → YES.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Press MENU → File</strong><p>From the Controlled Start screen, navigate to the File menu.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Set the Default Device</strong><p>Set the device to match where the backup was saved.</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Navigate to the Backup Directory</strong><p>Go into the subdirectory that contains the backup files you want to restore.</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Press F4 [RESTOR]</strong><p>If F4 shows [BACKUP], press FCTN and select RESTORE/BACKUP to toggle to [RESTOR].</p></div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Select "All of Above" → F4 [YES]</strong><p>Confirm the restore. Files will be loaded from the USB/device into controller SRAM.</p></div></div>
+      <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Cycle Power — Cold Start</strong><p>Once restore completes, press FCTN → Start (Cold) → ENTER to resume normal operations.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- IMAGE BACKUP & RESTORE -->
+<section class="section" id="imageback">
+  <div class="sec-label">7.7–7.8 — Image Backup &amp; Restore</div>
+  <h2 class="sec-title reveal">Image Backup &amp; Restore</h2>
+
+  <div class="tabs reveal">
+    <button class="tab-btn active" onclick="showTab('ibu',this)">IMAGE BACKUP</button>
+    <button class="tab-btn" onclick="showTab('ire',this)">IMAGE RESTORE</button>
+  </div>
+
+  <div class="tab-pane active" id="tab-ibu">
+    <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1rem">The Image Backup creates a complete copy of F-ROM and SRAM as a set of .img files on the selected device. It is available from the FILE menu in Cold or Controlled Start mode. <strong style="color:#fff">The actual backup occurs on the next power-up</strong> after selection.</p>
+    <div class="steps" id="ibuSteps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Access FILE Menu in Cold/Controlled Start</strong><p>Press MENU → File → File. Image Backup is only accessible in Cold or Controlled Start mode.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Set Default Device and Create Directory</strong><p>Set the destination device and navigate to or create a subdirectory (e.g., Initial_Image_061318).</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Press F4 [BACKUP] → Page 2 → Image Backup</strong><p>On the BACKUP menu's second page, select "Image Backup" (option 2) by highlighting and pressing ENTER, or press 2.</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Confirm Current Directory → F4 [OK]</strong><p>Verify the directory path shown is correct, then press OK to initiate the power cycle. The controller will restart and the image backup runs automatically on power-up.</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Backup Runs Automatically</strong><p>You will see files being written (FROM00.IMG, FROM01.IMG, SRAM02.IMG, etc.). The controller cycles power again when complete and displays "Image backup completed successfully."</p></div></div>
+    </div>
+    <div class="terminal reveal" style="margin-top:1.5rem">
+      <div class="t-header">IMAGE BACKUP — PROGRESS DISPLAY</div>
+      <div style="color:var(--accent3);line-height:2">WRITING MC:\FROM00.IMG ... Done</div>
+      <div style="color:var(--accent3);line-height:2">WRITING MC:\FROM01.IMG ... Done</div>
+      <div style="color:var(--accent3);line-height:2">WRITING MC:\FROM02.IMG ... Done</div>
+      <div style="color:var(--dim);line-height:2">...</div>
+      <div style="color:var(--accent3);line-height:2">WRITING MC:\SRAM02.IMG ... Done</div>
+      <div style="color:#fff;font-weight:600;line-height:2">DONE!</div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="tab-ire">
+    <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:.8rem">The Image Restore loads the saved F-ROM and SRAM back into the controller from .img files. This is performed via the BMON (Boot Monitor) screen — a special low-level boot environment.</p>
+    <div class="caut-box" style="margin-bottom:1.5rem"><div class="bi">⚠️</div><div class="ct"><strong>CAUTION:</strong> Image Restore ERASES all of SRAM and FROM before loading. Be absolutely certain you want to erase everything. If restoring to a different controller, an OPTN-027 alarm (ID Mismatch) will appear — contact FANUC America Corporation for ID correction.</div></div>
+    <div class="steps" id="ireSteps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Access BMON Screen</strong><p>Press and hold F1 + F5 while turning on the power disconnect circuit breaker. The Boot Monitor (BMON) screen appears.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Select Controller Backup/Restore</strong><p>From the BMON menu, select option 4 "Controller backup/restore" and press ENTER.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Select "Restore Controller Images"</strong><p>From the BACKUP RESTORE MENU, select option 3 "Restore Controller Images".</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Select the Storage Device</strong><p>Choose the device where the image files are stored (Memory Card, Ethernet, USB UD1, USB UT1).</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Select the Subdirectory</strong><p>Navigate to the directory containing the .img files. Press 1 to select the current directory.</p></div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Confirm and Begin Restore</strong><p>Press 1 for YES to begin. The controller verifies memory sizes, then clears SRAM and FROM and loads all image files (approximately 3–6 minutes).</p></div></div>
+      <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Return to BMON → Configuration Menu → Cold Start</strong><p>Once complete press ENTER to return to BMON. Select Configuration Menu, then Cold Start. DO NOT select INIT Start — this will clear all memory.</p></div></div>
+    </div>
+    <div class="note-box reveal" style="margin-top:1rem"><div class="bi">ℹ️</div><div class="nt"><strong>Key Sequence to Access BMON:</strong> Hold <strong>F1 + F5</strong> while powering on. Compare: Controlled Start = hold <strong>PREV + NEXT</strong> while powering on.</div></div>
+  </div>
+</section>
+
+<!-- DIRECTORY -->
+<section class="section" id="directory">
+  <div class="sec-label">7.9 — Generating a Directory</div>
+  <h2 class="sec-title reveal">Generating a Directory</h2>
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem">A directory is a list of files on a specific storage device. Press F2 [DIR] from the File screen to generate a file listing. You can display all files or filter by extension.</p>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>*.* — All Files</strong><span>Displays every file in the current directory regardless of extension.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>*.TP — TP Programs</strong><span>Shows only teach pendant program files (.TP extension).</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>*.VR — Variable Files</strong><span>Shows system and user variable files including registers and frame data.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>*.SV — System Files</strong><span>Shows system configuration files like SYSVARS, SYSSERVO, SYSMAST, SYSFRAME.</span></div></li>
+      </ul>
+      <div class="note-box" style="margin-top:1rem"><div class="bi">📋</div><div class="nt"><strong>Procedure 7-8:</strong> MENU → File → File → Set device → Navigate to directory → F2 [DIR] → select file extension from popup.</div></div>
+    </div>
+    <div class="reveal">
+      <div class="terminal">
+        <div class="t-header">FILE SCREEN — TP PROGRAM DIRECTORY</div>
+        <div class="t-path">UD1:\FANUC_ACADEMY\*.TP &nbsp;&nbsp;&nbsp; 1/57</div>
+        <div class="t-row"><div class="t-num">1</div><div class="t-name">-BCKED2-</div><div class="t-ext">TP</div><div class="t-desc">74</div></div>
+        <div class="t-row"><div class="t-num">2</div><div class="t-name">-BCKED8-</div><div class="t-ext">TP</div><div class="t-desc">74</div></div>
+        <div class="t-row"><div class="t-num">3</div><div class="t-name">-BCKED9-</div><div class="t-ext">TP</div><div class="t-desc">74</div></div>
+        <div class="t-row"><div class="t-num">4</div><div class="t-name">ABORTIT</div><div class="t-ext">TP</div><div class="t-desc">108</div></div>
+        <div class="t-row"><div class="t-num">5</div><div class="t-name">DSP_WEBP</div><div class="t-ext">TP</div><div class="t-desc">246</div></div>
+        <div class="t-row"><div class="t-num">6</div><div class="t-name">GETDATA</div><div class="t-ext">TP</div><div class="t-desc">177</div></div>
+        <div class="t-row"><div class="t-num">7</div><div class="t-name">LISTMENU</div><div class="t-ext">TP</div><div class="t-desc">179</div></div>
+        <div class="t-row"><div class="t-num">8</div><div class="t-name">MENUTEST</div><div class="t-ext">TP</div><div class="t-desc">371</div></div>
+        <div class="t-row"><div class="t-num">9</div><div class="t-name">OPERMENU</div><div class="t-ext">TP</div><div class="t-desc">179</div></div>
+        <div class="t-row"><div class="t-num">10</div><div class="t-name">PROMPTOK</div><div class="t-ext">TP</div><div class="t-desc">154</div></div>
+        <div class="t-status">[ TYPE ] &nbsp;[ DIR ] &nbsp;LOAD &nbsp;[BACKUP] &nbsp;[UTIL]</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">7.10 — Chapter Review</div>
+  <h2 class="sec-title reveal">Test Your Knowledge</h2>
+  <div class="quiz-wrap reveal"><div id="qC"></div></div>
+</section>
+
+<footer>
+  <div class="foot-logo">FANUC AMERICA // FILE MANIPULATION // CH.07</div>
+  <p>MATAGHAND0318CE &nbsp;|&nbsp; HandlingTool Training &nbsp;|&nbsp; © 2020 FANUC America Corporation</p>
+</footer>
+
+<script>
+// ── Particles ──
+const pc=document.getElementById('particles');
+for(let i=0;i<30;i++){const p=document.createElement('div');p.className='particle';p.style.left=Math.random()*100+'vw';p.style.animationDuration=(8+Math.random()*15)+'s';p.style.animationDelay=(Math.random()*15)+'s';p.style.setProperty('--drift',(Math.random()*80-40)+'px');if(Math.random()>.7){p.style.background='#ff6b00';p.style.width=p.style.height='3px';}pc.appendChild(p);}
+
+// ── Progress ──
+window.addEventListener('scroll',()=>{const t=window.scrollY,tot=document.body.scrollHeight-window.innerHeight;document.getElementById('pb').style.width=(t/tot*100)+'%';});
+
+// ── Reveal ──
+const rObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('visible');}),{threshold:.1,rootMargin:'0px 0px -50px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>rObs.observe(el));
+
+// ── Steps ──
+const sObs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.querySelectorAll('.step').forEach((s,i)=>setTimeout(()=>s.classList.add('visible'),i*130));});},{threshold:.05});
+['fbuSteps','freSteps','ibuSteps','ireSteps'].forEach(id=>{const el=document.getElementById(id);if(el)sObs.observe(el);});
+
+// ── Canvas helper ──
+function setupCanvas(id,w,h){const c=document.getElementById(id);if(!c)return null;const dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;c.style.width=w+'px';c.style.height=h+'px';const ctx=c.getContext('2d');ctx.scale(dpr,dpr);return ctx;}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+
+// ─────────────────────────────────────
+// HERO — animated data transfer
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('heroC',240,220);if(!ctx)return;
+  let t=0;
+  const packets=[];
+  for(let i=0;i<8;i++)packets.push({x:Math.random()*180+30,y:Math.random()*160+20,vx:(Math.random()-.5)*1.2,vy:(Math.random()-.5)*1.2,size:Math.random()*3+1,color:Math.random()>.5?'#00d4ff':'#00ff88',alpha:Math.random()});
+
+  function draw(){
+    ctx.clearRect(0,0,240,220);
+
+    // Controller box (left)
+    rr(ctx,10,60,80,100,6);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='#00d4ff';ctx.font='bold 8px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('CTRL',50,95);
+    ctx.fillStyle='rgba(0,212,255,.4)';ctx.font='6px "Share Tech Mono"';ctx.fillText('SRAM',50,108);ctx.fillText('F-ROM',50,120);
+    // Memory indicator blocks
+    ctx.fillStyle='rgba(0,212,255,.3)';rr(ctx,20,68,60,12,2);ctx.fill();
+    ctx.fillStyle='rgba(0,255,136,.3)';rr(ctx,20,82,60,12,2);ctx.fill();
+
+    // USB drive (right)
+    rr(ctx,150,75,72,90,8);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#ff6b00';ctx.lineWidth=1.5;ctx.stroke();
+    rr(ctx,158,88,56,30,4);ctx.fillStyle='rgba(255,107,0,.15)';ctx.fill();ctx.strokeStyle='rgba(255,107,0,.4)';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='#ff6b00';ctx.font='bold 7px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('USB',186,100);
+    // File rows
+    ['TP','VR','SV','IO'].forEach((ext,i)=>{
+      ctx.fillStyle=`rgba(255,107,0,${.15+i*.05})`;rr(ctx,158,122+i*10,56,8,2);ctx.fill();
+      ctx.fillStyle='rgba(255,107,0,.7)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillText('*.'+ext,162,126+i*10);
+    });
+
+    // Transfer arrow with animated packets
+    const transferDir=Math.sin(t*.3)>0;
+    ctx.strokeStyle='rgba(0,212,255,.2)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(92,110);ctx.lineTo(148,110);ctx.stroke();ctx.setLineDash([]);
+
+    // Arrow head
+    const ax=transferDir?148:92,dir=transferDir?1:-1;
+    ctx.fillStyle=transferDir?'#00d4ff':'#00ff88';
+    ctx.beginPath();ctx.moveTo(ax,110);ctx.lineTo(ax-dir*8,-5+110);ctx.lineTo(ax-dir*8,5+110);ctx.closePath();ctx.fill();
+
+    // Animated packet dots on the line
+    packets.forEach((p,i)=>{
+      p.alpha+=.04;if(p.alpha>1)p.alpha=0;
+      const px=92+(148-92)*(p.alpha);
+      ctx.beginPath();ctx.arc(px,110,2.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,212,255,${Math.sin(p.alpha*Math.PI)})`;ctx.fill();
+    });
+
+    // Transfer label
+    ctx.fillStyle='rgba(200,220,230,.5)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    ctx.fillText(transferDir?'BACKUP ►':'◄ RESTORE',120,104);
+
+    // SRAM/FROM labels under controller
+    ctx.fillStyle='rgba(0,212,255,.4)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='center';
+    ctx.fillText('SRAM',35,178);
+    ctx.fillStyle='rgba(0,255,136,.4)';
+    ctx.fillText('F-ROM',65,178);
+
+    // File label under USB
+    ctx.fillStyle='rgba(255,107,0,.4)';ctx.textAlign='center';
+    ctx.fillText('*.img files',186,178);
+
+    // Status pulse
+    const pulse=0.4+0.4*Math.sin(t*3);
+    ctx.beginPath();ctx.arc(50,75,4,0,Math.PI*2);ctx.fillStyle=`rgba(0,255,136,${pulse})`;ctx.fill();
+
+    t+=.025;requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ─────────────────────────────────────
+// MEMORY ARCHITECTURE CANVAS
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('memC',600,200);if(!ctx)return;
+  const W=600,H=200;let t=0;
+
+  const mems=[
+    {x:20,label:'DRAM',full:'Dynamic RAM',color:'#ff6b00',badge:'VOLATILE',y:20,w:170,items:['System software runtime','Temp memory (TEMP)','Lost on power off']},
+    {x:215,label:'SRAM',full:'Static RAM (Battery)',color:'#00d4ff',badge:'BATTERY-BACKED',y:20,w:185,items:['TP Programs (TPP pool)','System variables (PERM)','Mastering / Frames / I/O','30 min without battery']},
+    {x:420,label:'F-ROM',full:'Flash ROM',color:'#00ff88',badge:'NON-VOLATILE',y:20,w:165,items:['Core software / OS','HandlingTool application','FR: user storage','No battery needed']},
+  ];
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    mems.forEach((m,mi)=>{
+      rr(ctx,m.x,m.y,m.w,H-30,6);ctx.fillStyle=`rgba(${m.color==='#ff6b00'?'255,107,0':'#00d4ff'===m.color?'0,212,255':'0,255,136'},.05)`;ctx.fill();
+      ctx.strokeStyle=m.color;ctx.lineWidth=1.5;ctx.stroke();
+      // Header
+      ctx.fillStyle=m.color;ctx.font='bold 11px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(m.label,m.x+m.w/2,m.y+8);
+      ctx.fillStyle='rgba(200,220,230,.35)';ctx.font='6.5px "Share Tech Mono"';ctx.fillText(m.full,m.x+m.w/2,m.y+22);
+      // Badge
+      rr(ctx,m.x+m.w/2-36,m.y+33,72,12,3);ctx.fillStyle=m.color+'22';ctx.fill();ctx.strokeStyle=m.color+'55';ctx.lineWidth=.8;ctx.stroke();
+      ctx.fillStyle=m.color;ctx.font='5.5px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(m.badge,m.x+m.w/2,m.y+39);
+      // Items
+      m.items.forEach((item,i)=>{
+        ctx.fillStyle='rgba(200,220,230,.55)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText('• '+item,m.x+10,m.y+52+i*16);
+      });
+      // Animated pulse on battery-backed
+      if(mi===1){
+        const p=.4+.35*Math.sin(t*2);
+        ctx.beginPath();ctx.arc(m.x+m.w-14,m.y+10,5,0,Math.PI*2);ctx.fillStyle=`rgba(0,212,255,${p})`;ctx.fill();
+        ctx.fillStyle='rgba(200,220,230,.4)';ctx.font='5px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🔋',m.x+m.w-14,m.y+10);
+      }
+    });
+    // Labels at bottom
+    ['TEMP / Volatile','PERM / Nonvolatile','FROM / Nonvolatile'].forEach((lbl,i)=>{
+      ctx.fillStyle=['rgba(255,107,0,.5)','rgba(0,212,255,.5)','rgba(0,255,136,.5)'][i];
+      ctx.font='6.5px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      ctx.fillText(lbl,[107.5,307.5,502.5][i],H-4);
+    });
+    t+=.025;requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── Tabs ──
+function showTab(id,btn){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('tab-'+id).classList.add('active');}
+
+// ── QUIZ ──
+const Qs=[
+  {q:'What must be done prior to executing any type of backup or restore?',opts:['Set the Default Device — verify the correct device is selected','Make a directory','Nothing — the system handles it automatically','Format the device'],correct:0,explain:'Setting the Default Device is always the first step. You must specify which device to use before any program or file manipulations can be performed.',wrongExplain:'Setting the Default Device is required before any backup or restore. Without it, the controller does not know where to read or write files.'},
+  {q:'What key sequence is held while powering on to access the Controlled Start screen?',opts:['F1 + F5','SHIFT + RESET','PREV + NEXT','MENU + FCTN'],correct:2,explain:'Holding PREV + NEXT while turning on the controller accesses the Configuration Menu where you can select Controlled Start.',wrongExplain:'PREV + NEXT held during power-on accesses the Configuration Menu for Controlled Start. F1 + F5 during power-on accesses the BMON screen instead.'},
+  {q:'What key sequence is held while powering on to access the BMON screen?',opts:['PREV + NEXT','F1 + F5','SHIFT + F5','MENU + ENTER'],correct:1,explain:'Pressing and holding F1 + F5 while turning on the power disconnect circuit breaker accesses the Boot Monitor (BMON) screen used for Image Restore.',wrongExplain:'F1 + F5 during power-on accesses the Boot Monitor (BMON) screen. PREV + NEXT during power-on accesses the Controlled Start configuration menu.'},
+  {q:'What type of memory is saved when performing an Image Backup?',opts:['F-ROM Only','SRAM Only','F-ROM and SRAM','DRAM'],correct:2,explain:'An Image Backup saves both F-ROM (operating system, software) and SRAM (user programs, variables, I/O) — it is an exact copy of all controller memory.',wrongExplain:'Image Backup captures both F-ROM (core software, OS) and SRAM (user data, programs). This is what makes it a complete system clone.'},
+  {q:'What type of memory is saved when performing a File Backup?',opts:['F-ROM Only','SRAM Only','F-ROM and SRAM','DRAM'],correct:1,explain:'A File Backup saves only SRAM — the user data area containing TP programs, variables, frames, I/O configurations, registers, and related user files.',wrongExplain:'File Backup saves only SRAM content (user programs, variables, frames, I/O config, etc.). Application software in F-ROM is NOT backed up with a File Backup.'},
+  {q:'When restoring a File Backup, what happens to existing SRAM files on the controller?',opts:['They are left untouched','They are selectively merged','They are overwritten by the restored files','They are moved to an archive'],correct:2,explain:'A File Restore overwrites the existing data on the controller\'s SRAM. Not every file may be restored — write-protected files (System Macros, KCL files) will be skipped.',wrongExplain:'File Restore overwrites existing SRAM data. The restore process replaces controller files with the backed-up versions. Write-protected files are skipped automatically.'},
+  {q:'When restoring an Image Backup, what happens to F-ROM and SRAM on the controller?',opts:['Only changed files are updated','F-ROM is updated but SRAM is kept','Both F-ROM and SRAM are completely erased before loading','Only SRAM is erased'],correct:2,explain:'Image Restore erases ALL of SRAM and F-ROM before loading the image files. This is why it is a destructive all-or-nothing operation requiring careful preparation.',wrongExplain:'Image Restore erases all of both F-ROM and SRAM completely before loading the image. This is why the CAUTION warning states to be absolutely sure before proceeding.'},
+  {q:'Which type of backup allows you to restore individual files selectively?',opts:['Image Backup — you can select individual .img files','File Backup — you can choose specific categories or files','Both allow individual file selection','Neither — all backups are all-or-nothing'],correct:1,explain:'File Backup allows you to restore individual files or categories selectively. Image Backup is all-or-nothing — you cannot pick individual files from an image.',wrongExplain:'Only File Backup supports selective restoration. Image Backup restores everything or nothing — individual files cannot be extracted from an .img backup.'},
+];
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{el.classList.add('locked');if(idx===q.correct)el.classList.add('correct');else if(idx===i&&idx!==q.correct)el.classList.add('wrong');});
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){if(curQ<Qs.length-1){curQ++;renderQ();}else{document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem"><div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent);text-shadow:var(--glow);margin-bottom:1rem">✓</div><div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div><p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 7: File Manipulation.</p><button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button></div>`;}}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>

@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FANUC Initial Setup — Chapter 8</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--panel:#0d1e2e;--border:#1a3a5c;--accent:#00d4ff;--accent2:#ff6b00;--accent3:#00ff88;--text:#c8dde8;--dim:#4a6a7a;--glow:0 0 20px rgba(0,212,255,0.4);--glow2:0 0 20px rgba(255,107,0,0.4)}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite;z-index:0}
+  @keyframes gridMove{0%{transform:translateY(0)}100%{transform:translateY(60px)}}
+  .particle{position:fixed;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:float linear infinite;opacity:0;z-index:1}
+  @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10px) translateX(var(--drift));opacity:0}}
+  .progress-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(to right,var(--accent),var(--accent2));z-index:9999;transition:width .1s ease;box-shadow:var(--glow)}
+
+  nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav-logo{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent);letter-spacing:.2em;text-decoration:none}
+  .nav-links{display:flex;gap:1.5rem;list-style:none}
+  .nav-links a{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--dim);text-decoration:none;text-transform:uppercase;transition:color .2s,text-shadow .2s}
+  .nav-links a:hover{color:var(--accent);text-shadow:var(--glow)}
+
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;z-index:10}
+  .hero-label{font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:.4em;color:var(--accent);text-transform:uppercase;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s ease forwards .3s}
+  .hero h1{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,7vw,5.5rem);font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:#fff;text-shadow:var(--glow),0 0 60px rgba(0,212,255,.2);opacity:0;animation:fadeUp .8s ease forwards .5s}
+  .hero h1 span{color:var(--accent)}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.3rem);color:var(--dim);margin-top:1.2rem;letter-spacing:.1em;opacity:0;animation:fadeUp .8s ease forwards .7s}
+  .hero-cw{margin-top:3rem;position:relative;opacity:0;animation:fadeUp .8s ease forwards .9s}
+  .hero-ring{position:absolute;top:50%;left:50%;border:1px solid rgba(0,212,255,.25);border-radius:50%}
+  .ring1{width:290px;height:290px;border-style:dashed;animation:rotS 15s linear infinite;transform:translate(-50%,-50%)}
+  .ring2{width:340px;height:340px;animation:rotS 22s linear infinite reverse;border-color:rgba(255,107,0,.18);transform:translate(-50%,-50%)}
+  @keyframes rotS{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  .scroll-hint{position:absolute;bottom:2rem;font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;color:var(--dim);animation:bounce 2s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+  .section{position:relative;z-index:10;padding:5rem 2rem;max-width:1100px;margin:0 auto}
+  .sec-label{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.5em;color:var(--accent);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem}
+  .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--accent),transparent);opacity:.4}
+  .sec-title{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;color:#fff;margin-bottom:2.5rem;line-height:1.2}
+  .sub-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:1.4rem;margin-top:3.5rem}
+
+  .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1.5rem;margin-bottom:2rem}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,var(--accent),transparent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+  .card:hover{border-color:var(--accent);transform:translateY(-4px)}.card:hover::before{transform:scaleX(1)}
+  .card-icon{font-size:2.2rem;margin-bottom:.8rem;filter:drop-shadow(0 0 8px rgba(0,212,255,.4))}
+  .card-title{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+  .card-body{font-size:.88rem;line-height:1.75;color:var(--dim)}
+
+  .specs-list{list-style:none;display:flex;flex-direction:column;gap:.75rem}
+  .spec-item{display:flex;align-items:flex-start;gap:.75rem;padding:1rem 1.2rem;background:var(--panel);border:1px solid var(--border);border-radius:3px;transition:border-color .3s,transform .3s}
+  .spec-item:hover{border-color:var(--accent);transform:translateX(4px)}
+  .sdot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:.35rem;flex-shrink:0;box-shadow:var(--glow);animation:pg 2s ease infinite}
+  .sdot.o{background:var(--accent2);box-shadow:var(--glow2)}.sdot.g{background:var(--accent3);box-shadow:0 0 12px rgba(0,255,136,.5)}.sdot.r{background:#ff3232;box-shadow:0 0 12px rgba(255,50,50,.5)}
+  @keyframes pg{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  .spec-text strong{display:block;font-size:.9rem;color:#fff;font-weight:600;margin-bottom:.2rem}
+  .spec-text span{font-size:.82rem;color:var(--dim);line-height:1.65}
+
+  .warn-box{background:rgba(255,50,50,.08);border:1px solid rgba(255,50,50,.4);border-left:3px solid #ff3232;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:2rem 0;animation:wp 3s ease infinite}
+  .caut-box{background:rgba(255,140,0,.08);border:1px solid rgba(255,140,0,.4);border-left:3px solid #ff8c00;border-radius:4px;padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;margin:1.5rem 0}
+  .note-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.25);border-left:3px solid var(--accent);border-radius:4px;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:.8rem;margin:1.5rem 0}
+  @keyframes wp{0%,100%{border-left-color:#ff3232}50%{border-left-color:#ff8800}}
+  .bi{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+  .wt{font-size:.85rem;color:#ff8888;line-height:1.7}.wt strong{color:#ffcccc}
+  .ct{font-size:.85rem;color:#ffc080;line-height:1.7}.ct strong{color:#ffe0c0}
+  .nt{font-size:.85rem;color:#80ccdd;line-height:1.7}.nt strong{color:#b0e8f5}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  .cpanel{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1.5rem;display:flex;flex-direction:column;align-items:center}
+  .clabel{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.15em;margin-bottom:.75rem;text-align:center;text-transform:uppercase}
+
+  /* Axis limit methods */
+  .limit-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-bottom:2rem}
+  @media(max-width:700px){.limit-methods{grid-template-columns:1fr}}
+  .lm-card{border-radius:4px;padding:1.8rem;position:relative;overflow:hidden;transition:transform .3s}
+  .lm-card:hover{transform:translateY(-4px)}
+  .lm-card.sw{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.35)}
+  .lm-card.ot{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.35)}
+  .lm-card.hs{background:rgba(255,50,50,.06);border:1px solid rgba(255,50,50,.35)}
+  .lm-num{font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;margin-bottom:.3rem}
+  .lm-card.sw .lm-num{color:var(--accent)}.lm-card.ot .lm-num{color:var(--accent2)}.lm-card.hs .lm-num{color:#ff3232}
+  .lm-title{font-family:'Orbitron',sans-serif;font-size:.78rem;font-weight:700;margin-bottom:.5rem}
+  .lm-card.sw .lm-title{color:var(--accent)}.lm-card.ot .lm-title{color:var(--accent2)}.lm-card.hs .lm-title{color:#ff3232}
+  .lm-badge{font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.08em;padding:.15rem .5rem;border-radius:2px;display:inline-block;margin-bottom:.8rem}
+  .lm-card.sw .lm-badge{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+  .lm-card.ot .lm-badge{background:rgba(255,107,0,.12);color:var(--accent2);border:1px solid rgba(255,107,0,.3)}
+  .lm-card.hs .lm-badge{background:rgba(255,50,50,.12);color:#ff5555;border:1px solid rgba(255,50,50,.3)}
+  .lm-body{font-size:.82rem;color:var(--dim);line-height:1.7}
+
+  /* Axis limit interactive slider */
+  .axis-demo{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2rem}
+  .axis-rows{display:flex;flex-direction:column;gap:.8rem}
+  .axis-row{display:grid;grid-template-columns:60px 1fr 80px 80px;gap:.75rem;align-items:center}
+  .axis-lbl{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent)}
+  .axis-bar-wrap{position:relative;height:12px;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+  .axis-bar-fill{position:absolute;height:100%;background:linear-gradient(to right,var(--accent3),var(--accent));border-radius:6px;transition:all .4s ease}
+  .axis-val{font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);text-align:right}
+  .axis-val.lo{color:var(--accent2)}.axis-val.hi{color:var(--accent3)}
+
+  /* Payload table */
+  .payload-table{width:100%;border-collapse:collapse;font-size:.84rem}
+  .payload-table th{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:.18em;color:var(--accent);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border)}
+  .payload-table td{padding:.75rem 1rem;border-bottom:1px solid rgba(26,58,92,.4);color:var(--text);vertical-align:top;transition:background .2s}
+  .payload-table tr:hover td{background:rgba(0,212,255,.04)}.payload-table td:first-child{color:#fff;font-weight:600;font-family:'Share Tech Mono',monospace;white-space:nowrap}
+  .payload-table td:nth-child(2){color:var(--accent3);white-space:nowrap}
+
+  /* Payload screen sim */
+  .terminal{background:#030a0f;border:1px solid var(--accent);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.9;color:var(--text)}
+  .t-header{color:var(--accent);font-size:.7rem;letter-spacing:.15em;border-bottom:1px solid rgba(0,212,255,.2);padding-bottom:.4rem;margin-bottom:.6rem}
+  .t-label{color:var(--accent3)}.t-val{color:#fff}.t-dim{color:var(--dim)}
+  .t-row{display:flex;justify-content:space-between;gap:1rem}
+  .t-cursor{animation:blink .8s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+  /* Mastering diagram */
+  .master-states{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:2rem 0}
+  @media(max-width:600px){.master-states{grid-template-columns:1fr}}
+  .ms-card{border-radius:4px;padding:1.8rem;text-align:center}
+  .ms-card.ok{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.35)}
+  .ms-card.bad{background:rgba(255,50,50,.06);border:1px solid rgba(255,50,50,.35)}
+  .ms-title{font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.8rem}
+  .ms-card.ok .ms-title{color:var(--accent3)}.ms-card.bad .ms-title{color:#ff5555}
+  .ms-body{font-size:.83rem;color:var(--dim);line-height:1.7;margin-top:.6rem}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;position:relative}
+  .steps::before{content:'';position:absolute;left:1.5rem;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--accent),transparent)}
+  .step{display:flex;gap:1.5rem;padding:1.1rem 0 1.1rem .5rem;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+  .step.visible{opacity:1;transform:translateX(0)}
+  .step-num{width:2rem;height:2rem;border-radius:50%;background:var(--bg);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;color:var(--accent);flex-shrink:0;box-shadow:var(--glow);z-index:1}
+  .step-body strong{display:block;color:#fff;font-size:.92rem;margin-bottom:.25rem}
+  .step-body p{color:var(--dim);font-size:.83rem;line-height:1.65}
+
+  /* Fault display */
+  .fault-display{background:#030a0f;border:1px solid rgba(255,50,50,.5);border-radius:4px;padding:1.2rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:.78rem;margin:1rem 0}
+  .fault-line{color:#ff5555;line-height:1.9}
+  .fault-line span{color:var(--accent2)}
+
+  /* Quiz */
+  .quiz-wrap{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:2.5rem}
+  .quiz-q{font-size:1.05rem;color:#fff;margin-bottom:1.4rem;line-height:1.65;font-weight:600}
+  .quiz-opts{display:flex;flex-direction:column;gap:.65rem}
+  .quiz-opt{padding:.88rem 1.2rem;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:.9rem;color:var(--text);transition:all .2s;display:flex;align-items:center;gap:.8rem}
+  .quiz-opt:hover:not(.locked){border-color:var(--accent);color:#fff;background:rgba(0,212,255,.05)}
+  .quiz-opt.correct{border-color:var(--accent3);background:rgba(0,255,136,.1);color:var(--accent3)}
+  .quiz-opt.wrong{border-color:#ff4444;background:rgba(255,68,68,.1);color:#ff8888}
+  .opt-ltr{font-family:'Orbitron',sans-serif;font-size:.73rem;width:1.4rem;height:1.4rem;border-radius:2px;background:rgba(0,212,255,.1);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;font-weight:700}
+  .quiz-fb{margin-top:1rem;font-family:'Share Tech Mono',monospace;font-size:.83rem;padding:.8rem 1rem;border-radius:3px;display:none;line-height:1.6}
+  .quiz-fb.show{display:block;animation:fi .3s ease}.quiz-fb.good{background:rgba(0,255,136,.1);color:var(--accent3);border:1px solid rgba(0,255,136,.3)}.quiz-fb.bad{background:rgba(255,68,68,.1);color:#ff8888;border:1px solid rgba(255,68,68,.3)}
+  .quiz-nav{margin-top:1.4rem;display:flex;gap:1rem}
+  .qbtn{background:none;border:1px solid var(--border);color:var(--dim);padding:.6rem 1.2rem;border-radius:3px;cursor:pointer;font-family:'Exo 2',sans-serif;font-size:.85rem;transition:all .2s}
+  .qbtn.pri{background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)}.qbtn:hover{border-color:var(--accent);color:var(--text)}.qbtn.pri:hover{background:rgba(0,212,255,.2)}
+  @keyframes fi{from{opacity:0}to{opacity:1}}
+
+  footer{position:relative;z-index:10;padding:3rem 2rem;border-top:1px solid var(--border);text-align:center}
+  .foot-logo{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;color:var(--accent);letter-spacing:.3em;margin-bottom:1rem}
+  footer p{font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);letter-spacing:.1em}
+
+  @media(max-width:600px){nav{padding:.8rem 1rem}.nav-links{display:none}.section{padding:3rem 1rem}.limit-methods{grid-template-columns:1fr}}
+
+  .nav-home{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;padding:.32rem .85rem;border-radius:3px;border:1px solid var(--accent2);background:rgba(255,107,0,.1);color:var(--accent2);text-decoration:none;text-transform:uppercase;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+  .nav-home:hover{background:rgba(255,107,0,.22);box-shadow:0 0 14px rgba(255,107,0,.35);transform:translateY(-1px)}
+  .nav-home svg{width:10px;height:10px;fill:currentColor;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="progress-bar" id="pb"></div>
+<div id="particles"></div>
+
+<nav>
+  <a href="#hero" class="nav-logo">FANUC // CH.08</a>
+  <ul class="nav-links">
+    <li><a href="#axislimits">Axis Limits</a></li>
+    <li><a href="#software">Software Settings</a></li>
+    <li><a href="#payload">Payload</a></li>
+    <li><a href="#armload">Arm Load</a></li>
+    <li><a href="#mastering">Mastering</a></li>
+    <li><a href="#quiz">Review</a></li>
+    <li><a href="index.html" class="nav-home"><svg viewBox="0 0 20 20"><path d="M10 2L2 9h2v9h5v-5h2v5h5V9h2L10 2z"/></svg>HUB</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-ring ring1"></div>
+  <div class="hero-ring ring2"></div>
+  <div class="hero-label">HandlingTool Training Module</div>
+  <h1>Initial <span>Setup</span></h1>
+  <p class="hero-sub">Chapter 8 — Axis Limits, Payload &amp; Mastering</p>
+  <div class="hero-cw">
+    <canvas id="heroC" width="240" height="220" style="display:block;filter:drop-shadow(0 0 22px rgba(0,212,255,.45))"></canvas>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO BEGIN</div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="section reveal" id="axislimits">
+  <div class="sec-label">8.2 — Axis Limits</div>
+  <h2 class="sec-title">Axis Limits Setup</h2>
+  <p style="color:var(--dim);font-size:.95rem;line-height:1.85;margin-bottom:2rem">Axis limits define the motion range of the robot. The operating range can be restricted because of work area limitations, tooling and fixture interference, and cable or hose lengths. There are three layered methods — each acting as a safety net for the next.</p>
+
+  <div class="limit-methods reveal">
+    <div class="lm-card sw">
+      <div class="lm-num">01</div>
+      <div class="lm-title">Software Settings</div>
+      <div class="lm-badge">INNERMOST BOUNDARY</div>
+      <div class="lm-body">Upper and lower degree limitations set in the controller software. Can be configured for all robot axes. The robot performs a controlled stop when limits are reached — if the robot is calibrated. If not calibrated, the next layer (overtravel switches) engages 2–3° beyond.</div>
+    </div>
+    <div class="lm-card ot">
+      <div class="lm-num">02</div>
+      <div class="lm-title">Overtravel Switches</div>
+      <div class="lm-badge">MIDDLE BOUNDARY (OPTIONAL)</div>
+      <div class="lm-body">Physical overtravel switches located 2–3° beyond the software limits. When tripped, they cut power to the servo motors immediately. Available as an option for axis 1. These switches protect against uncalibrated software limit violations.</div>
+    </div>
+    <div class="lm-card hs">
+      <div class="lm-num">03</div>
+      <div class="lm-title">Hard Stops</div>
+      <div class="lm-badge">OUTERMOST BOUNDARY</div>
+      <div class="lm-body">Physical barriers located 2–3° beyond the overtravel switches or software settings on the three major axes. The robot physically cannot move beyond a hard stop. When software limits are changed, the hard stops must be adjusted to match.</div>
+    </div>
+  </div>
+
+  <div class="warn-box reveal">
+    <div class="bi">⚠️</div>
+    <div class="wt"><strong>WARNING:</strong> Do not use axis software limits as the only method for restricting robot motion. Change the hard stops to match the software modifications; otherwise, you could injure personnel or damage equipment.</div>
+  </div>
+  <div class="caut-box reveal">
+    <div class="bi">⚠️</div>
+    <div class="ct"><strong>CAUTION:</strong> Changing axis limits will affect the robot work area and could change robot motion. Anticipate the effects before changing them — unexpected results could occur, such as errors in previously recorded positions.</div>
+  </div>
+</section>
+
+<!-- SOFTWARE SETTINGS -->
+<section class="section" id="software">
+  <div class="sec-label">8.3 — Software Settings</div>
+  <h2 class="sec-title reveal">Axis Limits Software Settings</h2>
+
+  <div class="two-col">
+    <div class="reveal">
+      <div class="axis-demo">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);letter-spacing:.15em;margin-bottom:1.2rem">SYSTEM AXIS LIMITS — INTERACTIVE DISPLAY</p>
+        <div class="axis-rows" id="axisRows"></div>
+        <div class="note-box" style="margin-top:1.2rem;margin-bottom:0"><div class="bi">ℹ️</div><div class="nt">Smaller value always goes in LOWER column. Larger value in UPPER column. Positive values assumed — specify negative values explicitly.</div></div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>AXIS Column</strong><span>Displays the number for each robot axis (1–6 for a standard 6-axis robot). Axes 7–10 with GROUP=0 indicate those extended axes are not present.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>GROUP Column</strong><span>Indicates which motion group each axis belongs to. A "0" means the robot does not have those axes configured.</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>LOWER Column</strong><span>The lower limit of each axis — the axis limit in the more negative direction. You can change these values. Not always a negative number.</span></div></li>
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>UPPER Column</strong><span>The upper limit of each axis — the axis limit in the more positive direction. You can change these values. Not always a positive number.</span></div></li>
+      </ul>
+
+      <div class="note-box" style="margin-top:1.2rem"><div class="bi">📋</div><div class="nt"><strong>Procedure 8-1:</strong> MENU → Next → System → Axis Limits → cursor to axis → type new value → ENTER → repeat → cycle controller power to apply changes.</div></div>
+
+      <div class="sub-title" style="margin-top:2rem">Axis Limit Faults</div>
+      <div class="fault-display">
+        <div class="t-header">FAULT MESSAGES — AXIS LIMIT VIOLATION</div>
+        <div class="fault-line">JOG -013 Stroke limit <span>(G:1 A:6)</span></div>
+        <div class="fault-line">JOG -013 Stroke limit <span>(G:1 A:5)</span></div>
+        <div class="fault-line">JOG -013 Stroke limit <span>(G:1 A:4)</span></div>
+        <div class="fault-line">MOTN-017 Limit error <span>(G:1, A:2,3)</span></div>
+        <div class="fault-line">JOG -013 Stroke limit <span>(G:1 A:2)</span></div>
+        <div class="fault-line">JOG -013 Stroke limit <span>(G:1 A:1)</span></div>
+      </div>
+      <div class="note-box" style="margin:0"><div class="bi">🔧</div><div class="nt"><strong>Recovery:</strong> Jog the limited axis in the <strong>opposite direction</strong> of the limit. The fault will clear automatically when the axis moves back into range.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PAYLOAD -->
+<section class="section" id="payload">
+  <div class="sec-label">8.4 — Payload</div>
+  <h2 class="sec-title reveal">Payload Setup</h2>
+  <p class="reveal" style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:2rem">Payload data is <strong style="color:#fff">vitally important</strong> and must be as accurate as possible. Accurate payload improves Collision Guard, Soft Float, positional accuracy, cycle time, and general motion performance. Set payload whenever tooling changes or a workpiece is added or removed.</p>
+
+  <div class="note-box reveal"><div class="bi">ℹ️</div><div class="nt">If payload has not been set, the <strong>NOTIFICATIONS icon</strong> will flash in the upper right corner of the teach pendant screen. Up to 10 payload schedules by default, maximum 32. Specify a schedule using payload setup screens or PAYLOAD program instructions.</div></div>
+
+  <div class="two-col reveal" style="margin-top:2rem">
+    <div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem"><strong style="color:#fff">Payload tells the robot:</strong> what it is moving (mass), where the mass is centered (COG), and how the load affects motion (inertia).</p>
+      <table class="payload-table">
+        <thead><tr><th>ITEM</th><th>UNITS</th><th>DESCRIPTION</th></tr></thead>
+        <tbody>
+          <tr><td>Mass</td><td>kg</td><td>Mass of the end-of-arm tooling (and workpiece if held)</td></tr>
+          <tr><td>COG X</td><td>cm</td><td>Up/down offset of payload CoG from faceplate center. Positive = up.</td></tr>
+          <tr><td>COG Y</td><td>cm</td><td>Side offset of CoG from faceplate center. Positive = right (viewed from behind faceplate).</td></tr>
+          <tr><td>COG Z</td><td>cm</td><td>Offset of CoG from faceplate. Positive = out from faceplate.</td></tr>
+          <tr><td>Inertia X</td><td>kgfcms²</td><td>Moment of inertia around axis parallel to X-direction through CoG.</td></tr>
+          <tr><td>Inertia Y</td><td>kgfcms²</td><td>Moment of inertia around axis parallel to Y-direction through CoG.</td></tr>
+          <tr><td>Inertia Z</td><td>kgfcms²</td><td>Moment of inertia around axis parallel to Z-direction through CoG.</td></tr>
+        </tbody>
+      </table>
+      <div class="note-box" style="margin-top:1rem"><div class="bi">ℹ️</div><div class="nt">Conversion: 2.21 lbs = 1 kg &nbsp;|&nbsp; 0.39 inches = 1 cm</div></div>
+    </div>
+
+    <div>
+      <div class="terminal">
+        <div class="t-header">MOTION / PAYLOAD SET SCREEN</div>
+        <div style="color:var(--dim);font-size:.7rem;margin-bottom:.4rem">Group 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 7/8</div>
+        <div class="t-row"><div class="t-label">1 Schedule No[&nbsp;&nbsp;1]:</div><div style="color:var(--accent3)">[Tool Only&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]</div></div>
+        <div class="t-row"><div class="t-dim">2 PAYLOAD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[kg]</div><div class="t-val">2.50</div></div>
+        <div class="t-row"><div class="t-dim">3 PAYLOAD CENTER X&nbsp;&nbsp;&nbsp;&nbsp;[cm]</div><div class="t-val">0.00</div></div>
+        <div class="t-row"><div class="t-dim">4 PAYLOAD CENTER Y&nbsp;&nbsp;&nbsp;&nbsp;[cm]</div><div class="t-val">-7.50</div></div>
+        <div class="t-row"><div class="t-dim">5 PAYLOAD CENTER Z&nbsp;&nbsp;&nbsp;&nbsp;[cm]</div><div class="t-val">5.10</div></div>
+        <div class="t-row"><div class="t-dim">6 PAYLOAD INERTIA X [kgfcms²]</div><div class="t-val">1.14</div></div>
+        <div class="t-row"><div class="t-dim">7 PAYLOAD INERTIA Y [kgfcms²]</div><div class="t-val">1.21</div></div>
+        <div class="t-row"><div class="t-dim">8 PAYLOAD INERTIA Z [kgfcms²]</div><div class="t-val">0.63</div></div>
+      </div>
+      <div class="note-box" style="margin-top:1rem"><div class="bi">📋</div><div class="nt"><strong>Procedure 8-2 (Manual Entry):</strong> MENU → Next → System → Motion → cursor to schedule → F3 DETAIL → enter values → F4 YES to confirm path/cycle time change.</div></div>
+    </div>
+  </div>
+
+  <div class="sub-title reveal">Payload Setup Methods</div>
+  <div class="card-grid reveal">
+    <div class="card">
+      <div class="card-icon">✏️</div>
+      <div class="card-title">Manual Entry</div>
+      <div class="card-body">Values are known from engineering calculations or tooling data sheets. Enter mass (kg), COG X/Y/Z (cm), and Inertia X/Y/Z (kgfcms²) directly into the schedule via MOTION → DETAIL screen.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🤖</div>
+      <div class="card-title">Payload Ident (Option J669)</div>
+      <div class="card-body">Automatic payload estimation available on some robot models. The robot moves through a motion sequence and calculates payload automatically. If unsupported, "IDENT is not supported to this robot" is displayed when F2 IDENT is pressed.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚙️</div>
+      <div class="card-title">Payload Instructions</div>
+      <div class="card-body">Program instruction that sets the active payload schedule as the program executes. Essential when picking/dropping parts or performing tool changes. Insert via F1 [INST] → Page 2 → Payload → PAYLOAD[…].</div>
+    </div>
+  </div>
+</section>
+
+<!-- ARM LOAD -->
+<section class="section" id="armload">
+  <div class="sec-label">8.4.3 — Arm Load</div>
+  <h2 class="sec-title reveal">Arm Load Information</h2>
+  <div class="two-col">
+    <div class="reveal">
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem">Arm Load tells the robot what additional mass is attached at J1 and J3 — such as valve packs, cable management systems, or other peripheral devices mounted on the arm rather than at the tool.</p>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">Think of it like wearing a backpack. As weight is added, it places increasing strain on your body and must be compensated for. Unaccounted arm loads impact motion, accuracy, and functionality of software options like Collision Guard.</p>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>J2 Base Load [kg]</strong><span>Mass attached at the J1/J2 area — such as cable bundles, conduit management, or valve manifolds mounted on the lower arm or base.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>J3 Arm Load [kg]</strong><span>Mass attached at the J3 area — devices mounted mid-arm such as upper arm cable management or cooling systems.</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>J3 Casing Load [kg]</strong><span>Mass of any casing or covering mounted at J3 that adds to the arm's overall weight distribution.</span></div></li>
+      </ul>
+      <div class="note-box" style="margin-top:1rem"><div class="bi">📋</div><div class="nt"><strong>Procedure 8-4:</strong> MENU → Next → System → Motion → select schedule → F4 ARMLOAD → enter J2 Base Load, J3 Arm Load, J3 Casing Load → F4 YES to confirm.</div></div>
+    </div>
+    <div class="reveal">
+      <div class="cpanel">
+        <div class="clabel">Arm Load — Attachment Points</div>
+        <canvas id="armC" width="260" height="280" style="display:block;max-width:100%"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MASTERING -->
+<section class="section" id="mastering">
+  <div class="sec-label">8.5 — Mastering</div>
+  <h2 class="sec-title reveal">Mastering Overview</h2>
+
+  <div class="two-col reveal">
+    <div>
+      <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.2rem">Mastering defines the physical location of the robot by synchronizing mechanical information with positional information. <strong style="color:#fff">A robot must be mastered to operate properly.</strong> Robots are typically mastered before leaving FANUC, but mastering data can be lost.</p>
+      <ul class="specs-list">
+        <li class="spec-item"><div class="sdot"></div><div class="spec-text"><strong>Closed Loop Servo System</strong><span>Controller outputs command signals to drive each motor. A Serial Pulse Coder (SPC) on each motor sends feedback. The controller analyzes feedback and adjusts commands continuously to maintain accurate position and velocity.</span></div></li>
+        <li class="spec-item"><div class="sdot o"></div><div class="spec-text"><strong>What Mastering Records</strong><span>Mastering records the serial pulse coder reading at a known mechanical reference point on the robot. This data is stored in SRAM and maintained by a backup battery when powered down.</span></div></li>
+        <li class="spec-item"><div class="sdot g"></div><div class="spec-text"><strong>Calibration (Automatic)</strong><span>Each time the controller is powered on, it requests the stored SPC reading. When received, the servo system can operate normally. This automatic process is called calibration — it happens every power-on.</span></div></li>
+        <li class="spec-item"><div class="sdot r"></div><div class="spec-text"><strong>Why It Matters</strong><span>If mastering is wrong before recording positions, when mastering values are later corrected, ALL program points will be off by the amount of the mastering error. Always verify mastering first.</span></div></li>
+      </ul>
+    </div>
+    <div class="cpanel reveal">
+      <div class="clabel">Mastering — Servo Loop Diagram</div>
+      <canvas id="masterC" width="260" height="260" style="display:block;max-width:100%"></canvas>
+    </div>
+  </div>
+
+  <div class="sub-title reveal">Verify Mastering</div>
+  <div class="master-states reveal">
+    <div class="ms-card ok">
+      <div class="ms-title">✅ MASTER VERIFIED</div>
+      <canvas id="markOkC" width="200" height="80" style="display:block;margin:0 auto;max-width:100%"></canvas>
+      <div class="ms-body">Alignment marks line up at 0° for all axes. Marks aligned = robot is mastered correctly. Safe to proceed with programming.</div>
+    </div>
+    <div class="ms-card bad">
+      <div class="ms-title">❌ MASTERING REQUIRED</div>
+      <canvas id="markBadC" width="200" height="80" style="display:block;margin:0 auto;max-width:100%"></canvas>
+      <div class="ms-body">Alignment marks do not line up at 0°. Mastering must be performed before recording any positions.</div>
+    </div>
+  </div>
+
+  <div class="reveal">
+    <p style="color:var(--dim);font-size:.9rem;line-height:1.8;margin-bottom:1.5rem">Three styles of alignment marks are used depending on robot model and age:</p>
+    <div class="card-grid">
+      <div class="card"><div class="card-icon">📏</div><div class="card-title">Old Style Scribe Mark</div><div class="card-body">A simple scribed line on the joint housing. When the marks on both sides of the joint align at 0°, mastering is verified.</div></div>
+      <div class="card"><div class="card-icon">🔢</div><div class="card-title">Vernier Scale</div><div class="card-body">A precision scale similar to a caliper's vernier. Provides much finer mastering accuracy. The main scale line and vernier scale line must align at 0°.</div></div>
+      <div class="card"><div class="card-icon">📐</div><div class="card-title">New Style Scribe Mark</div><div class="card-body">Modern engraved marks on joint surfaces. Clean, durable reference marks that align clearly when the axis is at the zero position.</div></div>
+    </div>
+    <div class="note-box reveal"><div class="bi">📋</div><div class="nt"><strong>Procedure 8-5:</strong> Use the POSN screen to jog each axis to 0°. Check alignment marks for each axis. If all marks align → master verified. If any marks do not align → mastering must be performed.</div></div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section class="section" id="quiz">
+  <div class="sec-label">8.6 — Chapter Review</div>
+  <h2 class="sec-title reveal">Test Your Knowledge</h2>
+  <div class="quiz-wrap reveal"><div id="qC"></div></div>
+</section>
+
+<footer>
+  <div class="foot-logo">FANUC AMERICA // INITIAL SETUP // CH.08</div>
+  <p>MATAGHAND0318CE &nbsp;|&nbsp; HandlingTool Training &nbsp;|&nbsp; © 2020 FANUC America Corporation</p>
+</footer>
+
+<script>
+// ── Particles ──
+const pc=document.getElementById('particles');
+for(let i=0;i<30;i++){const p=document.createElement('div');p.className='particle';p.style.left=Math.random()*100+'vw';p.style.animationDuration=(8+Math.random()*15)+'s';p.style.animationDelay=(Math.random()*15)+'s';p.style.setProperty('--drift',(Math.random()*80-40)+'px');if(Math.random()>.7){p.style.background='#ff6b00';p.style.width=p.style.height='3px';}pc.appendChild(p);}
+
+// ── Progress ──
+window.addEventListener('scroll',()=>{const t=window.scrollY,tot=document.body.scrollHeight-window.innerHeight;document.getElementById('pb').style.width=(t/tot*100)+'%';});
+
+// ── Reveal ──
+const rObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('visible');}),{threshold:.1,rootMargin:'0px 0px -50px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>rObs.observe(el));
+
+// ── Steps ──
+const sObs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.querySelectorAll('.step').forEach((s,i)=>setTimeout(()=>s.classList.add('visible'),i*130));});},{threshold:.05});
+
+// ── Canvas helper ──
+function setupCanvas(id,w,h){const c=document.getElementById(id);if(!c)return null;const dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;c.style.width=w+'px';c.style.height=h+'px';const ctx=c.getContext('2d');ctx.scale(dpr,dpr);return ctx;}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+
+// ─────────────────────────────────────
+// HERO CANVAS — axis limit visualization
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('heroC',240,220);if(!ctx)return;
+  let t=0;
+  const axes=[
+    {label:'J1',lower:-185,upper:185,color:'#00d4ff'},
+    {label:'J2',lower:-60,upper:76,color:'#00d4ff'},
+    {label:'J3',lower:-132,upper:180,color:'#00d4ff'},
+    {label:'J4',lower:-360,upper:360,color:'#ff6b00'},
+    {label:'J5',lower:-125,upper:125,color:'#ff6b00'},
+    {label:'J6',lower:-360,upper:360,color:'#ff6b00'},
+  ];
+
+  function draw(){
+    ctx.clearRect(0,0,240,220);
+    ctx.fillStyle='rgba(0,212,255,.2)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';
+    ctx.fillText('SYSTEM AXIS LIMITS',120,14);
+
+    axes.forEach((ax,i)=>{
+      const y=28+i*31;
+      const barX=38,barW=160,barH=14;
+      const total=ax.upper-ax.lower;
+      const fillL=((0-ax.lower)/total)*barW;
+      const fillR=((ax.upper-0)/total)*barW;
+
+      // Track
+      rr(ctx,barX,y+6,barW,barH,3);
+      ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill();
+      ctx.strokeStyle='#1a3a5c';ctx.lineWidth=.8;ctx.stroke();
+
+      // Fill (range)
+      const pct=(0.5+0.5*Math.sin(t*.5+i*.8));
+      const curPos=barX+fillL+(fillR-fillL)*0.5;
+      // Gradient fill
+      const g=ctx.createLinearGradient(barX,0,barX+barW,0);
+      g.addColorStop(0,'rgba(255,107,0,.25)');
+      g.addColorStop(fillL/barW,`rgba(${ax.color==='#00d4ff'?'0,212,255':'255,107,0'},.5)`);
+      g.addColorStop(1,'rgba(255,107,0,.25)');
+      rr(ctx,barX,y+6,barW,barH,3);ctx.fillStyle=g;ctx.fill();
+
+      // Center zero line
+      ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(barX+fillL,y+6);ctx.lineTo(barX+fillL,y+20);ctx.stroke();
+
+      // Animated position marker
+      const markerX=barX+fillL+Math.sin(t*.8+i)*fillR*.6;
+      ctx.beginPath();ctx.arc(markerX,y+13,5,0,Math.PI*2);
+      ctx.fillStyle=ax.color;ctx.fill();
+      ctx.shadowColor=ax.color;ctx.shadowBlur=8;ctx.fill();ctx.shadowBlur=0;
+
+      // Axis label
+      ctx.fillStyle=ax.color;ctx.font='bold 8px "Orbitron"';ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillText(ax.label,8,y+13);
+
+      // Limit values
+      ctx.fillStyle='rgba(255,107,0,.7)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='right';
+      ctx.fillText(ax.lower,barX-2,y+14);
+      ctx.fillStyle='rgba(0,255,136,.7)';ctx.textAlign='left';
+      ctx.fillText(ax.upper,barX+barW+2,y+14);
+    });
+
+    ctx.fillStyle='rgba(200,220,230,.2)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillText('LOWER',30,215);ctx.textAlign='right';ctx.fillText('UPPER',210,215);
+
+    t+=.02;requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── Axis rows interactive display ──
+(function(){
+  const axes=[
+    {label:'J1',group:1,lower:-185,upper:185},
+    {label:'J2',group:1,lower:-60,upper:76},
+    {label:'J3',group:1,lower:-132,upper:180},
+    {label:'J4',group:1,lower:-360,upper:360},
+    {label:'J5',group:1,lower:-125,upper:125},
+    {label:'J6',group:1,lower:-360,upper:360},
+  ];
+  const container=document.getElementById('axisRows');
+  if(!container)return;
+
+  axes.forEach((ax,i)=>{
+    const row=document.createElement('div');row.className='axis-row';
+    const total=Math.max(Math.abs(ax.lower),Math.abs(ax.upper))*2;
+    const pct=((ax.upper-ax.lower)/total*100);
+    const left=((ax.lower+Math.abs(ax.lower))/total*100);
+    row.innerHTML=`
+      <div class="axis-lbl">${ax.label}</div>
+      <div class="axis-bar-wrap"><div class="axis-bar-fill" style="left:${left}%;width:${pct}%"></div></div>
+      <div class="axis-val lo">${ax.lower}°</div>
+      <div class="axis-val hi">${ax.upper}°</div>`;
+    container.appendChild(row);
+  });
+})();
+
+// ─────────────────────────────────────
+// ARM LOAD CANVAS
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('armC',260,280);if(!ctx)return;
+  const W=260,H=280;
+
+  function drawLink(x1,y1,x2,y2,t){
+    const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+    if(len===0)return;
+    const nx=-dy/len*t/2,ny=dx/len*t/2;
+    ctx.beginPath();ctx.moveTo(x1+nx,y1+ny);ctx.lineTo(x2+nx,y2+ny);ctx.lineTo(x2-nx,y2-ny);ctx.lineTo(x1-nx,y1-ny);ctx.closePath();
+  }
+
+  // Base
+  rr(ctx,90,245,80,14,4);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.5;ctx.stroke();
+  rr(ctx,78,251,104,8,2);ctx.fillStyle='#091828';ctx.fill();ctx.stroke();
+
+  // J1 hub
+  ctx.beginPath();ctx.arc(130,240,12,0,Math.PI*2);ctx.fillStyle='#091828';ctx.fill();ctx.strokeStyle='#00d4ff';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.arc(130,240,4,0,Math.PI*2);ctx.fillStyle='#00d4ff';ctx.fill();
+
+  // Lower arm link J1→J2
+  drawLink(130,240,130,180,18);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.2;ctx.stroke();
+
+  // J2 BASE LOAD indicator (orange box)
+  rr(ctx,148,200,45,24,4);ctx.fillStyle='rgba(255,107,0,.15)';ctx.fill();ctx.strokeStyle='rgba(255,107,0,.7)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle='#ff6b00';ctx.font='bold 7px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('J2 LOAD',170,212);
+  // Connector line
+  ctx.beginPath();ctx.moveTo(148,212);ctx.lineTo(130,200);ctx.strokeStyle='rgba(255,107,0,.5)';ctx.lineWidth=1;ctx.setLineDash([3,2]);ctx.stroke();ctx.setLineDash([]);
+
+  // J2 joint
+  ctx.beginPath();ctx.arc(130,182,11,0,Math.PI*2);ctx.fillStyle='#091828';ctx.fill();ctx.strokeStyle='#00d4ff';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.arc(130,182,4,0,Math.PI*2);ctx.fillStyle='#00d4ff';ctx.fill();
+
+  // Upper arm link J2→J3, angled
+  drawLink(130,182,105,125,15);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.2;ctx.stroke();
+
+  // J3 ARM LOAD indicator (green box)
+  rr(ctx,64,120,48,24,4);ctx.fillStyle='rgba(0,255,136,.1)';ctx.fill();ctx.strokeStyle='rgba(0,255,136,.6)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle='#00ff88';ctx.font='bold 7px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('J3 LOAD',88,132);
+  ctx.beginPath();ctx.moveTo(112,132);ctx.lineTo(105,132);ctx.strokeStyle='rgba(0,255,136,.5)';ctx.lineWidth=1;ctx.setLineDash([3,2]);ctx.stroke();ctx.setLineDash([]);
+
+  // J3 joint
+  ctx.beginPath();ctx.arc(105,125,10,0,Math.PI*2);ctx.fillStyle='#091828';ctx.fill();ctx.strokeStyle='#00d4ff';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.arc(105,125,3.5,0,Math.PI*2);ctx.fillStyle='#00d4ff';ctx.fill();
+
+  // Forearm J3→J4
+  drawLink(105,125,128,85,12);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.2;ctx.stroke();
+
+  // J4
+  ctx.beginPath();ctx.arc(128,85,9,0,Math.PI*2);ctx.fillStyle='#091828';ctx.fill();ctx.strokeStyle='#ff6b00';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.arc(128,85,3,0,Math.PI*2);ctx.fillStyle='#ff6b00';ctx.fill();
+
+  // Wrist to tool
+  drawLink(128,85,150,55,10);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.2;ctx.stroke();
+
+  // J5
+  ctx.beginPath();ctx.arc(150,55,8,0,Math.PI*2);ctx.fillStyle='#091828';ctx.fill();ctx.strokeStyle='#ff6b00';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(150,55,2.5,0,Math.PI*2);ctx.fillStyle='#ff6b00';ctx.fill();
+
+  // Tool tip
+  ctx.beginPath();ctx.moveTo(150,40);ctx.lineTo(143,55);ctx.lineTo(157,55);ctx.closePath();
+  ctx.fillStyle='#ff6b00';ctx.globalAlpha=.7;ctx.fill();ctx.globalAlpha=1;
+
+  // Labels
+  ctx.fillStyle='rgba(0,212,255,.4)';ctx.font='6.5px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText('PAYLOAD (at TCP)',150,275);
+  ctx.fillStyle='rgba(200,220,230,.25)';ctx.fillText('Arm loads affect motion,',130,260);ctx.fillText('accuracy & collision detect.',130,268);
+})();
+
+// ─────────────────────────────────────
+// MASTERING SERVO LOOP CANVAS
+// ─────────────────────────────────────
+(function(){
+  const ctx=setupCanvas('masterC',260,260);if(!ctx)return;
+  let t=0;
+  const cx=130,cy=130,r=90;
+
+  function draw(){
+    ctx.clearRect(0,0,260,260);
+
+    // Circle
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,212,255,.15)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+
+    // Nodes
+    const nodes=[
+      {angle:-Math.PI/2,label:'CONTROLLER',sub:'Command Signal',color:'#00d4ff'},
+      {angle:Math.PI/6,label:'SERVO AMP',sub:'PWM Drive',color:'#ff6b00'},
+      {angle:Math.PI*5/6,label:'SPC ENCODER',sub:'Position Feedback',color:'#00ff88'},
+    ];
+
+    nodes.forEach((n,i)=>{
+      const nx=cx+r*Math.cos(n.angle),ny=cy+r*Math.sin(n.angle);
+      // Glow
+      const g=ctx.createRadialGradient(nx,ny,0,nx,ny,28);
+      g.addColorStop(0,n.color+'33');g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(nx,ny,28,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+      // Circle
+      ctx.beginPath();ctx.arc(nx,ny,18,0,Math.PI*2);ctx.fillStyle='#0d1e2e';ctx.fill();
+      ctx.strokeStyle=n.color;ctx.lineWidth=1.5;ctx.stroke();
+      // Icon text
+      ctx.fillStyle=n.color;ctx.font='bold 8px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(['C','A','E'][i],nx,ny);
+      // Label
+      ctx.fillStyle=n.color;ctx.font='6.5px "Share Tech Mono"';ctx.textBaseline='top';
+      const ly=ny+22*(Math.sin(n.angle)>0?1:-2.5);
+      ctx.fillText(n.label,nx,ly);
+      ctx.fillStyle='rgba(200,220,230,.35)';ctx.font='6px "Share Tech Mono"';
+      ctx.fillText(n.sub,nx,ly+9);
+    });
+
+    // Animated signal packet
+    const packetAngle=-Math.PI/2+t*0.8;
+    const px=cx+r*Math.cos(packetAngle),py=cy+r*Math.sin(packetAngle);
+    ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);
+    const pc=t%2<1?'#00d4ff':'#00ff88';
+    ctx.fillStyle=pc;ctx.shadowColor=pc;ctx.shadowBlur=10;ctx.fill();ctx.shadowBlur=0;
+
+    // Center label
+    ctx.fillStyle='rgba(200,220,230,.5)';ctx.font='bold 8px "Orbitron"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('CLOSED LOOP',cx,cy-6);ctx.font='6px "Share Tech Mono"';
+    ctx.fillText('SERVO SYSTEM',cx,cy+6);
+    ctx.fillStyle='rgba(0,212,255,.35)';ctx.font='6px "Share Tech Mono"';
+    ctx.fillText('CALIBRATION: AUTO',cx,cy+18);
+
+    t+=.02;requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ─────────────────────────────────────
+// MASTERING MARK CANVASES
+// ─────────────────────────────────────
+(function(){
+  ['markOkC','markBadC'].forEach((id,isOk)=>{
+    const ctx=setupCanvas(id,200,80);if(!ctx)return;
+    const ok=isOk===0;
+
+    // Housing left
+    rr(ctx,10,20,80,40,4);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.5;ctx.stroke();
+    // Housing right
+    rr(ctx,110,20,80,40,4);ctx.fillStyle='#0d1e2e';ctx.fill();ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.5;ctx.stroke();
+    // Joint gap
+    ctx.fillStyle='#091828';ctx.fillRect(88,15,24,50);
+    ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(88,15);ctx.lineTo(88,65);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(112,15);ctx.lineTo(112,65);ctx.stroke();
+
+    // Reference marks
+    const offset=ok?0:12;
+    // Left mark (fixed)
+    ctx.strokeStyle=ok?'#00ff88':'#ff5555';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(85,40);ctx.lineTo(70,40);ctx.stroke();
+    // Right mark (may be offset)
+    ctx.beginPath();ctx.moveTo(115,40+offset);ctx.lineTo(130,40+offset);ctx.stroke();
+
+    // Arrow hint if not ok
+    if(!ok){
+      ctx.strokeStyle='rgba(255,85,85,.5)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(100,40);ctx.lineTo(100,40+offset);ctx.stroke();
+      ctx.fillStyle='rgba(255,85,85,.5)';
+      ctx.beginPath();ctx.moveTo(100,40+offset);ctx.lineTo(96,40+offset-5);ctx.lineTo(104,40+offset-5);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#ff5555';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      ctx.fillText('OFFSET',100,72);
+    } else {
+      ctx.fillStyle='rgba(0,255,136,.6)';
+      ctx.beginPath();ctx.arc(100,40,6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#00ff88';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      ctx.fillText('ALIGNED',100,72);
+    }
+  });
+})();
+
+// ── QUIZ ──
+const Qs=[
+  {q:'What must be done after setting Software Axis Limits?',opts:['Cycle Power (turn controller off then on)','Nothing — changes take effect immediately','Jog to each extreme of the limit to finalize','Software Axis Limits are not supported by FANUC'],correct:0,explain:'After setting software axis limits, you must turn off the controller and turn it back on again so the new information can be used by the system.',wrongExplain:'Axis limit software settings require a controller power cycle to take effect. The new values are not active until the controller is restarted.'},
+  {q:'How do you recover from violating an axis software limit?',opts:['Cycle power','Press Reset','Jog the axis in the opposite direction of the limit','Change the limit to allow for motion'],correct:2,explain:'To recover from hitting an axis limit, simply jog the limited axis in the opposite direction of the limit. The robot will move back into the valid range and the fault will clear.',wrongExplain:'Jogging in the opposite direction moves the axis back into the valid range. Cycling power or pressing Reset alone will not clear a stroke limit fault without also jogging away from the boundary.'},
+  {q:'Robot payload information is comprised of _______, COG, and Inertia.',opts:['Weight','Height','Span','Mass'],correct:3,explain:'Payload data consists of Mass (kg), Center of Gravity (COG X/Y/Z in cm), and Inertia (X/Y/Z in kgfcms²). Mass — not weight — is the correct term, as it is measured in kilograms.',wrongExplain:'The three payload parameters are Mass (kg), COG (Center of Gravity in cm), and Inertia (kgfcms²). Weight is a force (Newtons), while mass is what the robot actually uses.'},
+  {q:'If a robot loses its master, it will run just fine.',opts:['True','False'],correct:1,explain:'FALSE — A robot must be mastered to operate properly. If mastering data is lost, the controller cannot accurately know the position of each axis and cannot move to recorded positions correctly.',wrongExplain:'This is false. Mastering is essential for accurate operation. Without proper mastering data, the robot cannot accurately reach recorded positions, and all program points will be incorrect.'},
+  {q:'What does Mastering accomplish?',opts:['It limits the speed of each axis','It synchronizes mechanical information with the robot\'s positional information','It defines the payload schedule for the robot','It sets the default jog coordinate system'],correct:1,explain:'Mastering defines the physical location of the robot by synchronizing mechanical information (physical joint positions) with the robot\'s positional information (pulse coder readings at known reference points).',wrongExplain:'Mastering records the Serial Pulse Coder reading at a known mechanical reference point for each axis. This synchronizes the controller\'s knowledge of where the robot physically is with the actual mechanical position.'},
+  {q:'Which axis limit method physically prevents robot motion beyond a boundary?',opts:['Software settings','Overtravel limit switches','Hard stops','All three methods stop the robot identically'],correct:2,explain:'Hard stops are physical barriers that the robot mechanically cannot move beyond. Software settings cause a controlled stop, overtravel switches cut servo power, but only hard stops physically prevent motion.',wrongExplain:'Hard stops are physical barriers — the robot literally cannot move past them mechanically. Software settings stop motion if calibrated, overtravel switches cut power, but neither physically blocks movement the way hard stops do.'},
+  {q:'What is Arm Load information used for?',opts:['To set the axis limits for J1 and J3','To tell the robot about mass attached at J1 and J3 axes (not at the tool)','To define the payload schedule number','To set the mastering reference point position'],correct:1,explain:'Arm Load tells the robot about additional mass attached at the J1/J2 and J3 areas — valve packs, cable management, etc. This is distinct from payload which is mass at the tool. Arm load affects motion, accuracy, and Collision Guard performance.',wrongExplain:'Arm Load defines additional mass mounted on the arm (valve packs, cable management at J2/J3 area), separate from the tool payload. Unaccounted arm load impacts motion performance and Collision Guard accuracy.'},
+];
+let curQ=0,didAns=false;
+function renderQ(){
+  const q=Qs[curQ];
+  document.getElementById('qC').innerHTML=`
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.2em">QUESTION ${curQ+1} OF ${Qs.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">${q.opts.map((o,i)=>`<div class="quiz-opt" id="qo${i}" onclick="ansQ(${i})"><div class="opt-ltr">${String.fromCharCode(65+i)}</div>${o}</div>`).join('')}</div>
+    <div class="quiz-fb" id="qfb"></div>
+    <div class="quiz-nav">
+      ${curQ>0?`<button class="qbtn" onclick="prevQ()">← Prev</button>`:''}
+      <button class="qbtn pri" id="qnxt" onclick="nextQ()" style="display:none">${curQ<Qs.length-1?'Next →':'Finish'}</button>
+    </div>`;
+  didAns=false;
+}
+function ansQ(i){
+  if(didAns)return;didAns=true;
+  const q=Qs[curQ],fb=document.getElementById('qfb');
+  document.querySelectorAll('.quiz-opt').forEach((el,idx)=>{el.classList.add('locked');if(idx===q.correct)el.classList.add('correct');else if(idx===i&&idx!==q.correct)el.classList.add('wrong');});
+  if(i===q.correct){fb.textContent='✓ '+q.explain;fb.className='quiz-fb show good';}
+  else{fb.textContent='✗ Not quite — the correct answer is "'+q.opts[q.correct]+'". '+q.wrongExplain;fb.className='quiz-fb show bad';}
+  document.getElementById('qnxt').style.display='inline-block';
+}
+function nextQ(){if(curQ<Qs.length-1){curQ++;renderQ();}else{document.getElementById('qC').innerHTML=`<div style="text-align:center;padding:2rem"><div style="font-family:'Orbitron',sans-serif;font-size:3rem;color:var(--accent);text-shadow:var(--glow);margin-bottom:1rem">✓</div><div style="font-family:'Orbitron',sans-serif;font-size:1.2rem;color:#fff;margin-bottom:.5rem">CHAPTER COMPLETE</div><p style="color:var(--dim);font-size:.9rem;margin-bottom:2rem">You have reviewed all key concepts from Chapter 8: Initial Setup.</p><button onclick="curQ=0;renderQ();" class="qbtn pri">RESTART QUIZ</button></div>`;}}
+function prevQ(){if(curQ>0){curQ--;renderQ();}}
+renderQ();
+</script>
+</body>
+</html>
